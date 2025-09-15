@@ -406,38 +406,25 @@ def main_page():
 def data_management_page():
     """Data management page with input and view tabs."""
     st.title("📊 Správa produkčních dat")
-    st.markdown("Spravujte vaše produkční data a nastavte zdroj dat pro model")
+    st.markdown("Spravujte vaše produkční data kombinací CSV souboru a ručního vstupu")
 
-    # Data source selection
-    st.sidebar.header("⚙️ Nastavení")
-
-    data_source = st.sidebar.radio(
-        "Zdroj dat",
-        ["Pouze CSV soubor", "Ruční vstup + CSV", "Pouze ruční vstup"],
-        help="Vyberte, jak chcete spravovat vaše produkční data"
-    )
-
-    st.session_state.data_source = data_source
+    # Set data source to manual + CSV by default
+    st.session_state.data_source = "Ruční vstup + CSV"
 
     # Model retraining controls
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**🤖 Model**")
+    st.sidebar.header("⚙️ Nastavení modelu")
     if st.sidebar.button("🔄 Přetrénovat model"):
         st.session_state.model_needs_retraining = True
         st.cache_resource.clear()
         st.sidebar.success("Model bude přetrénován!")
 
     # Data management tabs
-    if data_source in ["Ruční vstup + CSV", "Pouze ruční vstup"]:
-        tab1, tab2 = st.tabs(["📝 Přidat nová data", "📊 Zobrazit data"])
+    tab1, tab2 = st.tabs(["📝 Přidat nová data", "📊 Zobrazit data"])
 
-        with tab1:
-            render_data_entry_form()
+    with tab1:
+        render_data_entry_form()
 
-        with tab2:
-            render_data_table()
-    else:
-        # For CSV only mode, just show the data table
+    with tab2:
         render_data_table()
 
 def main():
