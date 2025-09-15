@@ -1,0 +1,121 @@
+Project Brief for Claude: Doypack Heat Seal Parameter Recommendation App
+1. Project Goal:
+
+Create a web application using Python and the Streamlit framework. The application will serve as an intelligent tool for Doypack machine operators. Its purpose is to recommend the optimal heat sealing parameters (Temperature, Pressure, Dwell Time) for a given production job, based on the specific material being used and the amount of print on it. The tool should be data-driven, learning from historical production data.
+
+2. Core Functionality & User Workflow:
+
+The application should have a simple, single-page interface with the following workflow:
+
+User Input: The operator will input the characteristics of the upcoming production job using simple UI elements.
+
+Select the Material Type from a predefined list.
+
+Select the dominant Ink Type/Color from a predefined list.
+
+Use a slider to specify the Print Coverage as a percentage (0-100%).
+
+Get Recommendation: The operator will click a button (e.g., "Find Optimal Settings").
+
+Display Output: The application will process the request and display the following results in a clear, easy-to-read format:
+
+The recommended Sealing Temperature (in °C).
+
+The recommended Sealing Pressure (in bar).
+
+The recommended Dwell Time (in seconds).
+
+A Predicted Success Rate (e.g., "Predicted Success: 98.5%") to give the operator confidence in the settings.
+
+3. Technology Stack:
+
+Framework: Streamlit
+
+Core Libraries:
+
+pandas for data manipulation.
+
+scikit-learn for building the predictive model.
+
+joblib or pickle for saving and loading the trained model.
+
+4. Data Structure (Input Data):
+
+The application will be powered by a historical data file named historical_data.csv. This file will contain the records of past production runs. Please assume the CSV has the following columns:
+
+Material_Type (text, categorical, e.g., "PET/ALU/PE", "PE-Coated Paper")
+
+Print_Coverage (numeric, 0-100)
+
+Ink_Type (text, categorical, e.g., "Light", "Dark", "Metallic")
+
+Sealing_Temperature_C (numeric)
+
+Sealing_Pressure_bar (numeric)
+
+Dwell_Time_s (numeric)
+
+Outcome (text, categorical: "Pass" or "Fail")
+
+5. Machine Learning Component (The Predictive Engine):
+
+Objective: Train a machine learning model that can predict the probability of a "Pass" outcome based on all the other input features.
+
+Model Type: Use a Random Forest Classifier from scikit-learn. This model is robust and works well with this type of tabular data.
+
+Workflow:
+
+The script should first check if a trained model file (e.g., seal_model.pkl) exists.
+
+If the model file does not exist:
+
+Load the historical_data.csv into a pandas DataFrame.
+
+Preprocess the data: Use one-hot encoding for the categorical features (Material_Type, Ink_Type).
+
+Train a RandomForestClassifier on the entire dataset.
+
+Save the trained model and the encoder object to disk (e.g., using joblib).
+
+If the model file exists:
+
+Load the pre-trained model and the encoder from the file. This avoids retraining on every app run.
+
+6. Optimization Component (The Recommendation Engine):
+
+Objective: When the user clicks the button, this component must find the optimal combination of Sealing_Temperature_C, Sealing_Pressure_bar, and Dwell_Time_s that maximizes the predicted probability of a "Pass" outcome from the loaded machine learning model.
+
+Method: Implement a systematic search (like a grid search) over a predefined, sensible range for each of the three parameters.
+
+Define realistic ranges (e.g., Temperature: 120-180°C, Pressure: 3-6 bar, Time: 0.5-2.0 s).
+
+Iterate through combinations of these parameters at a reasonable step size.
+
+For each combination, use the loaded model to predict the probability of a "Pass" (model.predict_proba).
+
+Keep track of the parameter combination that yields the highest probability for "Pass".
+
+Return this best combination as the recommendation.
+
+7. Streamlit UI Implementation Details:
+
+Use st.title() for the main application title (e.g., "Heat Seal Parameter Optimizer").
+
+Use st.sidebar to contain all the user input widgets.
+
+Use st.sidebar.selectbox() for Material_Type and Ink_Type.
+
+Use st.sidebar.slider() for Print_Coverage.
+
+Use st.sidebar.button() for the main action button.
+
+When the button is clicked, display the results in the main area of the page. Use st.success() or st.metric() to clearly show the recommended parameters.
+
+8. Suggested File Structure:
+
+/doypack-optimizer/
+
+|-- app.py               # The main Streamlit application script
+|-- historical_data.csv  # Your historical production data
+|-- requirements.txt     # File listing necessary Python libraries
+|-- seal_model.pkl       # The saved/trained model file (will be created by the app)

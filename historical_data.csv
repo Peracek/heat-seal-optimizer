@@ -1,0 +1,120 @@
+Material_Type,Print_Coverage,Ink_Type,Sealing_Temperature_C,Sealing_Pressure_bar,Dwell_Time_s,Outcome
+PET/ALU/PE,15,Light,145,4.2,1.1,Pass
+PET/ALU/PE,45,Dark,160,4.8,1.4,Pass
+PE-Coated Paper,30,Light,140,3.8,0.9,Pass
+PET/ALU/PE,80,Metallic,170,5.2,1.6,Pass
+PE-Coated Paper,10,Light,135,3.5,0.8,Pass
+PET/ALU/PE,25,Dark,150,4.4,1.2,Pass
+PE-Coated Paper,60,Dark,155,4.6,1.3,Pass
+PET/ALU/PE,90,Metallic,175,5.5,1.8,Pass
+PE-Coated Paper,5,Light,130,3.2,0.7,Pass
+PET/ALU/PE,35,Light,148,4.1,1.0,Pass
+PE-Coated Paper,75,Metallic,165,5.0,1.5,Pass
+PET/ALU/PE,55,Dark,162,4.9,1.4,Pass
+PE-Coated Paper,20,Light,138,3.6,0.8,Pass
+PET/ALU/PE,70,Metallic,172,5.3,1.7,Pass
+PE-Coated Paper,85,Dark,168,5.1,1.6,Pass
+PET/ALU/PE,40,Light,152,4.3,1.1,Pass
+PE-Coated Paper,15,Dark,142,4.0,1.0,Pass
+PET/ALU/PE,95,Metallic,178,5.8,1.9,Pass
+PE-Coated Paper,65,Light,158,4.7,1.3,Pass
+PET/ALU/PE,12,Dark,146,4.1,1.0,Pass
+PE-Coated Paper,50,Metallic,162,4.8,1.4,Pass
+PET/ALU/PE,28,Light,149,4.2,1.1,Pass
+PE-Coated Paper,38,Dark,153,4.4,1.2,Pass
+PET/ALU/PE,82,Metallic,174,5.4,1.7,Pass
+PE-Coated Paper,8,Light,132,3.3,0.7,Pass
+PET/ALU/PE,62,Dark,164,5.0,1.5,Pass
+PE-Coated Paper,72,Metallic,167,5.1,1.6,Pass
+PET/ALU/PE,18,Light,147,4.0,1.0,Pass
+PE-Coated Paper,42,Dark,156,4.5,1.3,Pass
+PET/ALU/PE,88,Metallic,176,5.6,1.8,Pass
+PE-Coated Paper,25,Light,141,3.9,0.9,Pass
+PET/ALU/PE,58,Dark,163,4.9,1.4,Pass
+PE-Coated Paper,78,Metallic,169,5.2,1.6,Pass
+PET/ALU/PE,32,Light,151,4.3,1.2,Pass
+PE-Coated Paper,22,Dark,144,4.1,1.0,Pass
+PET/ALU/PE,92,Metallic,177,5.7,1.9,Pass
+PE-Coated Paper,68,Light,159,4.7,1.4,Pass
+PET/ALU/PE,48,Dark,161,4.8,1.4,Pass
+PE-Coated Paper,14,Metallic,137,3.7,0.8,Pass
+PET/ALU/PE,76,Light,166,5.0,1.5,Pass
+PE-Coated Paper,56,Dark,157,4.6,1.3,Pass
+PET/ALU/PE,36,Metallic,154,4.5,1.2,Pass
+PE-Coated Paper,86,Light,170,5.3,1.7,Pass
+PET/ALU/PE,26,Dark,148,4.2,1.1,Pass
+PE-Coated Paper,46,Metallic,160,4.8,1.4,Pass
+PET/ALU/PE,66,Light,165,5.0,1.5,Pass
+PE-Coated Paper,16,Dark,140,3.8,0.9,Pass
+PET/ALU/PE,96,Metallic,179,5.9,2.0,Pass
+PE-Coated Paper,74,Light,168,5.1,1.6,Pass
+PET/ALU/PE,34,Dark,153,4.4,1.2,Pass
+PE-Coated Paper,6,Metallic,134,3.4,0.7,Pass
+PET/ALU/PE,54,Light,162,4.9,1.4,Pass
+PE-Coated Paper,84,Dark,171,5.4,1.7,Pass
+PET/ALU/PE,44,Metallic,158,4.7,1.3,Pass
+PE-Coated Paper,64,Light,161,4.8,1.4,Pass
+PET/ALU/PE,24,Dark,149,4.2,1.1,Pass
+PE-Coated Paper,52,Metallic,163,4.9,1.4,Pass
+PET/ALU/PE,72,Light,167,5.1,1.6,Pass
+PE-Coated Paper,12,Dark,139,3.7,0.8,Pass
+PET/ALU/PE,98,Metallic,180,6.0,2.0,Pass
+PE-Coated Paper,38,Light,154,4.5,1.2,Pass
+PET/ALU/PE,80,Dark,173,5.4,1.7,Pass
+PE-Coated Paper,18,Metallic,143,4.0,1.0,Pass
+PET/ALU/PE,60,Light,164,5.0,1.5,Pass
+PE-Coated Paper,88,Dark,174,5.5,1.8,Pass
+PET/ALU/PE,8,Metallic,136,3.6,0.8,Pass
+PE-Coated Paper,48,Light,157,4.6,1.3,Pass
+PET/ALU/PE,78,Dark,170,5.3,1.7,Pass
+PE-Coated Paper,28,Metallic,148,4.2,1.1,Pass
+PET/ALU/PE,68,Light,166,5.0,1.5,Pass
+PE-Coated Paper,58,Dark,160,4.8,1.4,Pass
+PET/ALU/PE,20,Metallic,145,4.1,1.0,Pass
+PE-Coated Paper,90,Light,175,5.6,1.8,Pass
+PET/ALU/PE,40,Dark,156,4.5,1.3,Pass
+PE-Coated Paper,70,Metallic,166,5.0,1.5,Pass
+PET/ALU/PE,50,Light,160,4.8,1.4,Pass
+PE-Coated Paper,30,Dark,150,4.3,1.2,Pass
+PET/ALU/PE,85,Metallic,175,5.5,1.8,Pass
+PE-Coated Paper,15,Light,140,3.8,0.9,Pass
+PET/ALU/PE,75,Dark,169,5.2,1.6,Pass
+PE-Coated Paper,55,Metallic,163,4.9,1.4,Pass
+PET/ALU/PE,35,Light,152,4.3,1.2,Pass
+PE-Coated Paper,95,Dark,178,5.8,1.9,Pass
+PET/ALU/PE,65,Metallic,167,5.1,1.6,Pass
+PE-Coated Paper,45,Light,158,4.7,1.3,Pass
+PET/ALU/PE,25,Dark,150,4.3,1.2,Pass
+PE-Coated Paper,75,Metallic,170,5.3,1.7,Pass
+PET/ALU/PE,55,Light,163,4.9,1.4,Pass
+PE-Coated Paper,35,Dark,154,4.5,1.2,Pass
+PET/ALU/PE,15,Metallic,142,4.0,1.0,Pass
+PE-Coated Paper,85,Light,173,5.4,1.7,Pass
+PET/ALU/PE,45,Dark,159,4.7,1.3,Pass
+PE-Coated Paper,65,Metallic,166,5.0,1.5,Pass
+PET/ALU/PE,5,Light,133,3.3,0.7,Pass
+PE-Coated Paper,95,Dark,179,5.9,2.0,Pass
+PET/ALU/PE,75,Metallic,171,5.4,1.7,Pass
+PE-Coated Paper,25,Light,146,4.1,1.0,Pass
+PET/ALU/PE,55,Dark,162,4.9,1.4,Pass
+PE-Coated Paper,85,Metallic,174,5.5,1.8,Pass
+PET/ALU/PE,50,Light,125,4.2,1.1,Fail
+PET/ALU/PE,30,Dark,185,6.2,2.1,Fail
+PE-Coated Paper,50,Light,125,2.8,0.5,Fail
+PET/ALU/PE,70,Metallic,190,6.5,2.3,Fail
+PE-Coated Paper,20,Light,120,2.5,0.4,Fail
+PET/ALU/PE,40,Dark,115,2.2,0.3,Fail
+PE-Coated Paper,80,Dark,195,6.8,2.5,Fail
+PET/ALU/PE,60,Metallic,200,7.0,2.8,Fail
+PE-Coated Paper,10,Light,110,2.0,0.2,Fail
+PET/ALU/PE,90,Light,118,2.4,0.4,Fail
+PE-Coated Paper,35,Metallic,188,6.3,2.2,Fail
+PET/ALU/PE,25,Dark,205,7.2,3.0,Fail
+PE-Coated Paper,75,Light,112,2.1,0.3,Fail
+PET/ALU/PE,45,Metallic,198,6.9,2.7,Fail
+PE-Coated Paper,65,Dark,124,2.7,0.5,Fail
+PET/ALU/PE,15,Light,210,7.5,3.2,Fail
+PE-Coated Paper,85,Dark,116,2.3,0.4,Fail
+PET/ALU/PE,55,Metallic,192,6.6,2.4,Fail
+PE-Coated Paper,5,Light,208,7.3,3.1,Fail
+PET/ALU/PE,95,Dark,122,2.6,0.5,Fail
