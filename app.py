@@ -347,11 +347,6 @@ def optimize_parameters_section(model, encoder, data):
                         f"{optimal_params['dwell_time']:.1f}s",
                         help="Doporučená doba zdržení"
                     )
-                    st.metric(
-                        "🎯 Předpokládaná úspěšnost",
-                        f"{optimal_params['success_rate']*100:.1f}%",
-                        help="Předpovídaná pravděpodobnost úspěchu"
-                    )
 
                 # Additional info
                 st.info(f"""
