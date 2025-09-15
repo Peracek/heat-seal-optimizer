@@ -289,7 +289,7 @@ def render_data_entry_form():
         ink_options = csv_data['Ink_Type'].unique().tolist()
     else:
         material_options = [
-            'Papír + PET+LDPE',
+            'Papír + PET + LDPE',
             'Papír + Al + LDPE',
             'PET + Al + LDPE',
             'BOPP + BOPP + CPP',
@@ -303,8 +303,8 @@ def render_data_entry_form():
 
         with col1:
             material_type = st.selectbox("Typ materiálu", material_options)
-            print_coverage = st.slider("Pokrytí tiskem (%)", 0, 100, 50)
-            ink_type = st.selectbox("Typ barvy", ink_options)
+            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
+            ink_type = st.selectbox("Typ barvy v oblasti svařování", ink_options)
 
         with col2:
             temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
@@ -395,17 +395,17 @@ def optimize_parameters_section(model, encoder, data):
         )
 
         ink_type = st.selectbox(
-            "Typ/barva inkoustu",
+            "Typ/barva inkoustu v oblasti svařování",
             options=ink_options,
-            help="Vyberte dominantní typ nebo barvu inkoustu"
+            help="Vyberte dominantní typ nebo barvu inkoustu v oblasti svařování"
         )
 
         print_coverage = st.slider(
-            "Pokrytí tiskem (%)",
+            "Pokrytí tiskem v oblasti svařování (%)",
             min_value=0,
             max_value=100,
             value=50,
-            help="Procento povrchu obalu pokryté tiskem"
+            help="Procento povrchu v oblasti svařování pokryté tiskem"
         )
 
         # Main action button
@@ -453,8 +453,8 @@ def optimize_parameters_section(model, encoder, data):
                 st.info(f"""
                 **📋 Shrnutí doporučení:**
                 - **Materiál:** {material_type}
-                - **Typ barvy:** {ink_type}
-                - **Pokrytí tiskem:** {print_coverage}%
+                - **Typ barvy v oblasti svařování:** {ink_type}
+                - **Pokrytí tiskem v oblasti svařování:** {print_coverage}%
 
                 Tyto parametry jsou optimalizovány na základě historických produkčních dat
                 a měly by poskytovat nejvyšší pravděpodobnost úspěšného svaření.

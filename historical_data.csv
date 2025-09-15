@@ -1,11 +1,11 @@
 Material_Type,Print_Coverage,Ink_Type,Sealing_Temperature_C,Sealing_Pressure_bar,Dwell_Time_s,Outcome
 PET + Al + LDPE,15,Světlá,145,4.2,1.1,Pass
 PET + PETmet + LDPE,45,Tmavá,160,4.8,1.4,Pass
-Papír + PET+LDPE,30,Světlá,140,3.8,0.9,Pass
+Papír + PET + LDPE,30,Světlá,140,3.8,0.9,Pass
 PET + Al + LDPE,80,Metalická,170,5.2,1.6,Pass
 BOPP + BOPP + CPP,10,Světlá,135,3.5,0.8,Pass
 PET + PETmet + LDPE,25,Tmavá,150,4.4,1.2,Pass
-Papír + PET+LDPE,60,Tmavá,155,4.6,1.3,Pass
+Papír + PET + LDPE,60,Tmavá,155,4.6,1.3,Pass
 PET + Al + LDPE,90,Metalická,175,5.5,1.8,Pass
 BOPP + BOPP + CPP,5,Světlá,130,3.2,0.7,Pass
 PET + PETmet + LDPE,35,Světlá,148,4.1,1.0,Pass
@@ -29,7 +29,7 @@ Papír + Al + LDPE,72,Metalická,167,5.1,1.6,Pass
 PET + PETmet + LDPE,18,Světlá,147,4.0,1.0,Pass
 BOPP + PETmet + LDPE,42,Tmavá,156,4.5,1.3,Pass
 PET + PETmet + LDPE,88,Metalická,176,5.6,1.8,Pass
-Papír + PET+LDPE,25,Světlá,141,3.9,0.9,Pass
+Papír + PET + LDPE,25,Světlá,141,3.9,0.9,Pass
 PET + Al + LDPE,58,Tmavá,163,4.9,1.4,Pass
 BOPP + PETmet + LDPE,78,Metalická,169,5.2,1.6,Pass
 PET + PETmet + LDPE,32,Světlá,151,4.3,1.2,Pass
@@ -37,7 +37,7 @@ Papír + Al + LDPE,22,Tmavá,144,4.1,1.0,Pass
 PET + Al + LDPE,92,Metalická,177,5.7,1.9,Pass
 BOPP + PETmet + LDPE,68,Světlá,159,4.7,1.4,Pass
 PET + Al + LDPE,48,Tmavá,161,4.8,1.4,Pass
-Papír + PET+LDPE,14,Metalická,137,3.7,0.8,Pass
+Papír + PET + LDPE,14,Metalická,137,3.7,0.8,Pass
 PET + Al + LDPE,76,Světlá,166,5.0,1.5,Pass
 BOPP + BOPP + CPP,56,Tmavá,157,4.6,1.3,Pass
 PET + Al + LDPE,36,Metalická,154,4.5,1.2,Pass
@@ -61,7 +61,7 @@ BOPP + BOPP + CPP,12,Tmavá,139,3.7,0.8,Pass
 PET + Al + LDPE,98,Metalická,180,6.0,2.0,Pass
 BOPP + BOPP + CPP,38,Světlá,154,4.5,1.2,Pass
 PET + Al + LDPE,80,Tmavá,173,5.4,1.7,Pass
-Papír + PET+LDPE,18,Metalická,143,4.0,1.0,Pass
+Papír + PET + LDPE,18,Metalická,143,4.0,1.0,Pass
 PET + Al + LDPE,60,Světlá,164,5.0,1.5,Pass
 BOPP + BOPP + CPP,88,Tmavá,174,5.5,1.8,Pass
 PET + PETmet + LDPE,8,Metalická,136,3.6,0.8,Pass
@@ -71,9 +71,9 @@ BOPP + PETmet + LDPE,28,Metalická,148,4.2,1.1,Pass
 PET + PETmet + LDPE,68,Světlá,166,5.0,1.5,Pass
 Papír + Al + LDPE,58,Tmavá,160,4.8,1.4,Pass
 PET + PETmet + LDPE,20,Metalická,145,4.1,1.0,Pass
-Papír + PET+LDPE,90,Světlá,175,5.6,1.8,Pass
+Papír + PET + LDPE,90,Světlá,175,5.6,1.8,Pass
 PET + PETmet + LDPE,40,Tmavá,156,4.5,1.3,Pass
-Papír + PET+LDPE,70,Metalická,166,5.0,1.5,Pass
+Papír + PET + LDPE,70,Metalická,166,5.0,1.5,Pass
 PET + PETmet + LDPE,50,Světlá,160,4.8,1.4,Pass
 BOPP + PETmet + LDPE,30,Tmavá,150,4.3,1.2,Pass
 PET + PETmet + LDPE,85,Metalická,175,5.5,1.8,Pass
@@ -81,7 +81,7 @@ BOPP + BOPP + CPP,15,Světlá,140,3.8,0.9,Pass
 PET + PETmet + LDPE,75,Tmavá,169,5.2,1.6,Pass
 BOPP + BOPP + CPP,55,Metalická,163,4.9,1.4,Pass
 PET + PETmet + LDPE,35,Světlá,152,4.3,1.2,Pass
-Papír + PET+LDPE,95,Tmavá,178,5.8,1.9,Pass
+Papír + PET + LDPE,95,Tmavá,178,5.8,1.9,Pass
 PET + PETmet + LDPE,65,Metalická,167,5.1,1.6,Pass
 BOPP + BOPP + CPP,45,Světlá,158,4.7,1.3,Pass
 PET + Al + LDPE,25,Tmavá,150,4.3,1.2,Pass
