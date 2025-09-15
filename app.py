@@ -296,7 +296,7 @@ def render_data_entry_form():
             'PET + PETmet + LDPE',
             'BOPP + PETmet + LDPE'
         ]
-        ink_options = ['Light', 'Dark', 'Metallic']
+        ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
     with st.form("data_entry_form"):
         col1, col2 = st.columns(2)
