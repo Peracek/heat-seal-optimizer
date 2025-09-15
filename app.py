@@ -288,7 +288,14 @@ def render_data_entry_form():
         material_options = csv_data['Material_Type'].unique().tolist()
         ink_options = csv_data['Ink_Type'].unique().tolist()
     else:
-        material_options = ['PET/ALU/PE', 'PE-Coated Paper']
+        material_options = [
+            'Papír + PET+LDPE',
+            'Papír + Al + LDPE',
+            'PET + Al + LDPE',
+            'BOPP + BOPP + CPP',
+            'PET + PETmet + LDPE',
+            'BOPP + PETmet + LDPE'
+        ]
         ink_options = ['Light', 'Dark', 'Metallic']
 
     with st.form("data_entry_form"):
