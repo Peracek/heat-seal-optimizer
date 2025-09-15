@@ -407,12 +407,8 @@ def optimize_parameters_section(model, encoder, data):
     with col2:
         st.subheader("📋 Doporučené parametry")
 
-        # Create a placeholder for results that won't cause layout shift
-        results_container = st.container()
-
-    # Handle button click outside of columns to prevent duplication
-    if optimize_button:
-        with results_container:
+        # Handle button click and display results in the same column
+        if optimize_button:
             with st.spinner("Optimalizuji parametry..."):
                 optimal_params = find_optimal_parameters(
                     model, encoder, material_type, ink_type, print_coverage
@@ -458,8 +454,7 @@ def optimize_parameters_section(model, encoder, data):
                 """)
             else:
                 st.error("Nepodařilo se najít optimální parametry. Zkuste prosím jiné vstupy.")
-    else:
-        with results_container:
+        else:
             st.info("👆 Nastavte parametry a klikněte na tlačítko pro nalezení optimálního nastavení.")
 
     # Display statistics in sidebar for main page
