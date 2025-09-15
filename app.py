@@ -36,6 +36,20 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS recommendations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            material_type TEXT,
+            print_coverage INTEGER,
+            ink_type TEXT,
+            recommended_temperature_c REAL,
+            recommended_pressure_bar REAL,
+            recommended_dwell_time_s REAL,
+            predicted_success_rate REAL,
+            user_feedback TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -75,6 +89,54 @@ def save_user_data_to_db(data):
     conn.commit()
     conn.close()
 
+def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_params):
+    """Save parameter recommendation to database."""
+    init_database()
+    conn = sqlite3.connect('user_data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO recommendations
+        (material_type, print_coverage, ink_type, recommended_temperature_c,
+         recommended_pressure_bar, recommended_dwell_time_s, predicted_success_rate)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (str(material_type), int(print_coverage), str(ink_type),
+          float(optimal_params['temperature']), float(optimal_params['pressure']),
+          float(optimal_params['dwell_time']), float(optimal_params['success_rate'])))
+    conn.commit()
+    conn.close()
+
+def load_recommendations_from_db():
+    """Load recommendations from SQLite database."""
+    init_database()
+    conn = sqlite3.connect('user_data.db')
+    try:
+        df = pd.read_sql_query('''
+            SELECT id, material_type, print_coverage, ink_type,
+                   recommended_temperature_c, recommended_pressure_bar,
+                   recommended_dwell_time_s, predicted_success_rate,
+                   user_feedback, created_at
+            FROM recommendations
+            ORDER BY created_at DESC
+        ''', conn)
+        return df
+    except:
+        return pd.DataFrame()
+    finally:
+        conn.close()
+
+def update_recommendation_feedback(recommendation_id, feedback):
+    """Update recommendation feedback in database."""
+    init_database()
+    conn = sqlite3.connect('user_data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE recommendations
+        SET user_feedback = ?
+        WHERE id = ?
+    ''', (feedback, recommendation_id))
+    conn.commit()
+    conn.close()
+
 @st.cache_data
 def load_csv_data():
     """Load historical data from CSV file."""
@@ -83,19 +145,52 @@ def load_csv_data():
     return pd.read_csv('historical_data.csv')
 
 def load_combined_data():
-    """Load and combine CSV and user data."""
+    """Load and combine CSV, user data, and feedback data."""
     csv_data = load_csv_data()
     user_data = load_user_data_from_db()
+    feedback_data = load_feedback_as_training_data()
 
-    if csv_data.empty and user_data.empty:
+    # Combine all data sources
+    all_data = []
+    if not csv_data.empty:
+        all_data.append(csv_data)
+    if not user_data.empty:
+        all_data.append(user_data)
+    if not feedback_data.empty:
+        all_data.append(feedback_data)
+
+    if not all_data:
         return None
 
-    if csv_data.empty:
-        return user_data
-    elif user_data.empty:
-        return csv_data
-    else:
-        return pd.concat([csv_data, user_data], ignore_index=True)
+    return pd.concat(all_data, ignore_index=True)
+
+def load_feedback_as_training_data():
+    """Convert recommendation feedback into training data."""
+    init_database()
+    conn = sqlite3.connect('user_data.db')
+    try:
+        df = pd.read_sql_query('''
+            SELECT material_type as Material_Type,
+                   print_coverage as Print_Coverage,
+                   ink_type as Ink_Type,
+                   recommended_temperature_c as Sealing_Temperature_C,
+                   recommended_pressure_bar as Sealing_Pressure_bar,
+                   recommended_dwell_time_s as Dwell_Time_s,
+                   CASE
+                       WHEN user_feedback = 'good' THEN 'Pass'
+                       WHEN user_feedback = 'bad' THEN 'Fail'
+                       ELSE NULL
+                   END as Outcome
+            FROM recommendations
+            WHERE user_feedback IS NOT NULL
+        ''', conn)
+        # Filter out rows with NULL outcomes
+        df = df.dropna(subset=['Outcome'])
+        return df
+    except:
+        return pd.DataFrame()
+    finally:
+        conn.close()
 
 @st.cache_resource
 def load_or_train_model():
@@ -324,6 +419,9 @@ def optimize_parameters_section(model, encoder, data):
                 )
 
             if optimal_params:
+                # Save recommendation to database
+                save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_params)
+
                 st.success("✅ Optimální parametry nalezeny!")
 
                 # Display results in metrics
@@ -376,10 +474,84 @@ def optimize_parameters_section(model, encoder, data):
         # Show data source info
         csv_count = len(load_csv_data()) if not load_csv_data().empty else 0
         user_count = len(load_user_data_from_db()) if not load_user_data_from_db().empty else 0
-        if csv_count > 0 and user_count > 0:
+        feedback_count = len(load_feedback_as_training_data()) if not load_feedback_as_training_data().empty else 0
+        if csv_count > 0 or user_count > 0 or feedback_count > 0:
             st.sidebar.markdown(f"**Zdroje dat:**")
-            st.sidebar.markdown(f"• CSV: {csv_count} záznamů")
-            st.sidebar.markdown(f"• Ruční: {user_count} záznamů")
+            if csv_count > 0:
+                st.sidebar.markdown(f"• CSV: {csv_count} záznamů")
+            if user_count > 0:
+                st.sidebar.markdown(f"• Ruční: {user_count} záznamů")
+            if feedback_count > 0:
+                st.sidebar.markdown(f"• Zpětná vazba: {feedback_count} záznamů")
+
+def render_recommendation_history():
+    """Render the recommendation history with feedback options."""
+    st.markdown("---")
+    st.subheader("📋 Historie doporučení")
+
+    try:
+        recommendations = load_recommendations_from_db()
+
+        if recommendations.empty:
+            st.info("Zatím nebyly provedeny žádné doporučení parametrů.")
+            return
+
+        st.markdown(f"**Celkem doporučení:** {len(recommendations)}")
+
+        # Display recent recommendations
+        for _, rec in recommendations.head(10).iterrows():
+            try:
+                # Safe conversion of numeric values
+                temp = float(rec['recommended_temperature_c']) if pd.notna(rec['recommended_temperature_c']) else 0
+                pressure = float(rec['recommended_pressure_bar']) if pd.notna(rec['recommended_pressure_bar']) else 0
+                dwell = float(rec['recommended_dwell_time_s']) if pd.notna(rec['recommended_dwell_time_s']) else 0
+
+                with st.expander(f"🕐 {str(rec['created_at'])[:16]} | {rec['material_type']} | {rec['ink_type']} | {rec['print_coverage']}%"):
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.metric("🌡️ Teplota", f"{temp:.0f}°C")
+                        st.metric("⚡ Tlak", f"{pressure:.1f} bar")
+
+                    with col2:
+                        st.metric("⏱️ Doba zdržení", f"{dwell:.1f}s")
+                        if pd.notna(rec['user_feedback']):
+                            feedback_emoji = "👍" if rec['user_feedback'] == "good" else "👎"
+                            st.write(f"**Zpětná vazba:** {feedback_emoji}")
+                        else:
+                            st.write("**Zpětná vazba:** Neohodnoceno")
+
+                    with col3:
+                        st.write("**Ohodnotit doporučení po výrobě:**")
+
+                        feedback_key = f"feedback_{rec['id']}"
+                        col_good, col_bad = st.columns(2)
+
+                        with col_good:
+                            if st.button("👍 Fungovalo", key=f"good_{rec['id']}",
+                                        disabled=pd.notna(rec['user_feedback'])):
+                                update_recommendation_feedback(rec['id'], "good")
+                                st.session_state.model_needs_retraining = True
+                                st.success("Zpětná vazba uložena! Model bude přetrénován.")
+                                st.rerun()
+
+                        with col_bad:
+                            if st.button("👎 Nefungovalo", key=f"bad_{rec['id']}",
+                                        disabled=pd.notna(rec['user_feedback'])):
+                                update_recommendation_feedback(rec['id'], "bad")
+                                st.session_state.model_needs_retraining = True
+                                st.error("Zpětná vazba uložena! Model bude přetrénován.")
+                                st.rerun()
+            except (ValueError, TypeError) as e:
+                st.error(f"Chyba při zobrazení doporučení: {e}")
+                continue
+
+        if len(recommendations) > 10:
+            st.info(f"Zobrazeno posledních 10 doporučení z celkem {len(recommendations)}")
+
+    except Exception as e:
+        st.error(f"Chyba při načítání historie doporučení: {e}")
+        st.info("Historie doporučení bude dostupná po prvním vygenerování parametrů.")
 
 def main_page():
     """Main landing page focused on parameter optimization."""
@@ -397,6 +569,9 @@ def main_page():
 
     # Main parameter optimization interface
     optimize_parameters_section(model, encoder, data)
+
+    # Show recommendation history
+    render_recommendation_history()
 
 def data_management_page():
     """Data management page with input and view tabs."""
