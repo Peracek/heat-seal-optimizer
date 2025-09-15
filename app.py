@@ -9,7 +9,7 @@ from itertools import product
 import sqlite3
 from datetime import datetime
 
-st.set_page_config(page_title="Heat Seal Parameter Optimizer", layout="wide")
+st.set_page_config(page_title="Optimalizátor parametrů tepelného svařování", layout="wide")
 
 # Initialize session state for data management
 if 'data_source' not in st.session_state:
@@ -185,7 +185,7 @@ def find_optimal_parameters(model, encoder, material_type, ink_type, print_cover
 
 def render_data_entry_form():
     """Render the data entry form."""
-    st.subheader("📝 Add New Production Data")
+    st.subheader("📝 Přidat nová produkční data")
 
     # Get existing data for options
     csv_data = load_csv_data()
@@ -200,22 +200,24 @@ def render_data_entry_form():
         col1, col2 = st.columns(2)
 
         with col1:
-            material_type = st.selectbox("Material Type", material_options)
-            print_coverage = st.slider("Print Coverage (%)", 0, 100, 50)
-            ink_type = st.selectbox("Ink Type", ink_options)
+            material_type = st.selectbox("Typ materiálu", material_options)
+            print_coverage = st.slider("Pokrytí tiskem (%)", 0, 100, 50)
+            ink_type = st.selectbox("Typ barvy", ink_options)
 
         with col2:
-            temperature = st.number_input("Sealing Temperature (°C)", 100.0, 220.0, 150.0, 1.0)
-            pressure = st.number_input("Sealing Pressure (bar)", 1.0, 8.0, 4.0, 0.1)
-            dwell_time = st.number_input("Dwell Time (s)", 0.1, 3.0, 1.0, 0.1)
+            temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
+            pressure = st.number_input("Tlak svařování (bar)", 1.0, 8.0, 4.0, 0.1)
+            dwell_time = st.number_input("Doba zdržení (s)", 0.1, 3.0, 1.0, 0.1)
 
-        outcome = st.radio("Outcome", ["Pass", "Fail"], horizontal=True)
+        outcome = st.radio("Výsledek", ["Úspěch", "Neúspěch"], horizontal=True)
 
-        submitted = st.form_submit_button("➕ Add Data Point", type="primary")
+        submitted = st.form_submit_button("➕ Přidat datový bod", type="primary")
 
         if submitted:
             # Validate inputs
             if 100 <= temperature <= 220 and 1.0 <= pressure <= 8.0 and 0.1 <= dwell_time <= 3.0:
+                # Translate outcome back to English for consistency with CSV data
+                outcome_en = 'Pass' if outcome == 'Úspěch' else 'Fail'
                 new_data = {
                     'Material_Type': material_type,
                     'Print_Coverage': print_coverage,
@@ -223,18 +225,18 @@ def render_data_entry_form():
                     'Sealing_Temperature_C': temperature,
                     'Sealing_Pressure_bar': pressure,
                     'Dwell_Time_s': dwell_time,
-                    'Outcome': outcome
+                    'Outcome': outcome_en
                 }
                 save_user_data_to_db(new_data)
                 st.session_state.model_needs_retraining = True
-                st.success("✅ Data point added successfully! Model will retrain on next prediction.")
+                st.success("✅ Datový bod úspěšně přidán! Model bude přetrénován při další predikci.")
                 st.rerun()
             else:
-                st.error("❌ Invalid parameter ranges! Please check your inputs.")
+                st.error("❌ Neplatné rozsahy parametrů! Zkontrolujte prosím vaše vstupy.")
 
 def render_data_table():
     """Render the data table with current dataset."""
-    st.subheader("📊 Current Dataset")
+    st.subheader("📊 Aktuální dataset")
 
     data = load_combined_data()
     if data is not None and not data.empty:
@@ -242,181 +244,217 @@ def render_data_table():
 
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
-            if st.button("🔄 Retrain Model"):
+            if st.button("🔄 Přetrénovat model"):
                 st.session_state.model_needs_retraining = True
                 st.cache_resource.clear()
-                st.success("Model will retrain on next prediction!")
+                st.success("Model bude přetrénován při další predikci!")
 
         with col2:
-            if st.button("📥 Download Data"):
+            if st.button("📥 Stáhnout data"):
                 csv = data.to_csv(index=False)
                 st.download_button(
-                    label="📄 Download CSV",
+                    label="📄 Stáhnout CSV",
                     data=csv,
                     file_name=f"production_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv"
                 )
 
         # Statistics
-        st.subheader("📈 Dataset Statistics")
+        st.subheader("📈 Statistiky datasetu")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Total Records", len(data))
+            st.metric("Celkem záznamů", len(data))
         with col2:
             pass_rate = (data['Outcome'] == 'Pass').mean() * 100
-            st.metric("Pass Rate", f"{pass_rate:.1f}%")
+            st.metric("Úspěšnost", f"{pass_rate:.1f}%")
         with col3:
-            st.metric("Material Types", data['Material_Type'].nunique())
+            st.metric("Typů materiálů", data['Material_Type'].nunique())
         with col4:
-            st.metric("Ink Types", data['Ink_Type'].nunique())
+            st.metric("Typů barev", data['Ink_Type'].nunique())
 
     else:
-        st.info("No data available. Add some data points or ensure CSV file exists.")
+        st.info("Nejsou k dispozici žádná data. Přidejte několik datových bodů nebo se ujistěte, že existuje CSV soubor.")
 
 def optimize_parameters_section(model, encoder, data):
     """Render the parameter optimization section."""
-    # Sidebar for inputs
-    st.sidebar.header("🎯 Production Parameters")
+    # Create two columns for better layout
+    col1, col2 = st.columns([1, 2])
 
-    material_options = data['Material_Type'].unique().tolist()
-    ink_options = data['Ink_Type'].unique().tolist()
+    with col1:
+        st.subheader("🎯 Vstupní parametry")
 
-    material_type = st.sidebar.selectbox(
-        "Material Type",
-        options=material_options,
-        help="Select the material type for your production run"
-    )
+        material_options = data['Material_Type'].unique().tolist()
+        ink_options = data['Ink_Type'].unique().tolist()
 
-    ink_type = st.sidebar.selectbox(
-        "Ink Type/Color",
-        options=ink_options,
-        help="Select the dominant ink type or color"
-    )
+        material_type = st.selectbox(
+            "Typ materiálu",
+            options=material_options,
+            help="Vyberte typ materiálu pro vaši produkční sérii"
+        )
 
-    print_coverage = st.sidebar.slider(
-        "Print Coverage (%)",
-        min_value=0,
-        max_value=100,
-        value=50,
-        help="Percentage of package surface covered with print"
-    )
+        ink_type = st.selectbox(
+            "Typ/barva inkoustu",
+            options=ink_options,
+            help="Vyberte dominantní typ nebo barvu inkoustu"
+        )
 
-    # Main action button
-    if st.sidebar.button("🎯 Find Optimal Settings", type="primary"):
-        with st.spinner("Optimizing parameters..."):
-            optimal_params = find_optimal_parameters(
-                model, encoder, material_type, ink_type, print_coverage
-            )
+        print_coverage = st.slider(
+            "Pokrytí tiskem (%)",
+            min_value=0,
+            max_value=100,
+            value=50,
+            help="Procento povrchu obalu pokryté tiskem"
+        )
 
-        if optimal_params:
-            st.success("✅ Optimal parameters found!")
+        # Main action button
+        optimize_button = st.button("🎯 Najít optimální nastavení", type="primary", use_container_width=True)
 
-            # Display results in columns
-            col1, col2, col3, col4 = st.columns(4)
+    with col2:
+        st.subheader("📋 Doporučené parametry")
 
-            with col1:
-                st.metric(
-                    "🌡️ Temperature",
-                    f"{optimal_params['temperature']:.0f}°C",
-                    help="Recommended sealing temperature"
+        # Create a placeholder for results that won't cause layout shift
+        results_container = st.container()
+
+    # Handle button click outside of columns to prevent duplication
+    if optimize_button:
+        with results_container:
+            with st.spinner("Optimalizuji parametry..."):
+                optimal_params = find_optimal_parameters(
+                    model, encoder, material_type, ink_type, print_coverage
                 )
 
-            with col2:
-                st.metric(
-                    "⚡ Pressure",
-                    f"{optimal_params['pressure']:.1f} bar",
-                    help="Recommended sealing pressure"
-                )
+            if optimal_params:
+                st.success("✅ Optimální parametry nalezeny!")
 
-            with col3:
-                st.metric(
-                    "⏱️ Dwell Time",
-                    f"{optimal_params['dwell_time']:.1f}s",
-                    help="Recommended dwell time"
-                )
+                # Display results in metrics
+                metric_col1, metric_col2 = st.columns(2)
 
-            with col4:
-                st.metric(
-                    "🎯 Success Rate",
-                    f"{optimal_params['success_rate']*100:.1f}%",
-                    help="Predicted success probability"
-                )
+                with metric_col1:
+                    st.metric(
+                        "🌡️ Teplota svařování",
+                        f"{optimal_params['temperature']:.0f}°C",
+                        help="Doporučená teplota svařování"
+                    )
+                    st.metric(
+                        "⚡ Tlak svařování",
+                        f"{optimal_params['pressure']:.1f} bar",
+                        help="Doporučený tlak svařování"
+                    )
 
-            # Additional info
-            st.info(f"""
-            **Recommendation Summary:**
-            - Material: {material_type}
-            - Ink Type: {ink_type}
-            - Print Coverage: {print_coverage}%
+                with metric_col2:
+                    st.metric(
+                        "⏱️ Doba zdržení",
+                        f"{optimal_params['dwell_time']:.1f}s",
+                        help="Doporučená doba zdržení"
+                    )
+                    st.metric(
+                        "🎯 Předpokládaná úspěšnost",
+                        f"{optimal_params['success_rate']*100:.1f}%",
+                        help="Předpovídaná pravděpodobnost úspěchu"
+                    )
 
-            These parameters are optimized based on historical production data
-            and should provide the highest probability of successful sealing.
-            """)
-        else:
-            st.error("Could not find optimal parameters. Please try different inputs.")
+                # Additional info
+                st.info(f"""
+                **📋 Shrnutí doporučení:**
+                - **Materiál:** {material_type}
+                - **Typ barvy:** {ink_type}
+                - **Pokrytí tiskem:** {print_coverage}%
 
-    # Display some statistics about the data
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**📊 Data Statistics**")
-    total_records = len(data)
-    pass_rate = (data['Outcome'] == 'Pass').mean() * 100
-    st.sidebar.metric("Total Records", total_records)
-    st.sidebar.metric("Overall Pass Rate", f"{pass_rate:.1f}%")
+                Tyto parametry jsou optimalizovány na základě historických produkčních dat
+                a měly by poskytovat nejvyšší pravděpodobnost úspěšného svaření.
+                """)
+            else:
+                st.error("Nepodařilo se najít optimální parametry. Zkuste prosím jiné vstupy.")
+    else:
+        with results_container:
+            st.info("👆 Nastavte parametry a klikněte na tlačítko pro nalezení optimálního nastavení.")
 
-    # Show data source info
-    csv_count = len(load_csv_data()) if not load_csv_data().empty else 0
-    user_count = len(load_user_data_from_db()) if not load_user_data_from_db().empty else 0
-    if csv_count > 0 and user_count > 0:
-        st.sidebar.markdown(f"**Data Sources:**")
-        st.sidebar.markdown(f"• CSV: {csv_count} records")
-        st.sidebar.markdown(f"• Manual: {user_count} records")
+    # Display statistics in sidebar for main page
+    if st.sidebar:
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("**📊 Statistiky modelu**")
+        total_records = len(data)
+        pass_rate = (data['Outcome'] == 'Pass').mean() * 100
+        st.sidebar.metric("Celkem záznamů", total_records)
+        st.sidebar.metric("Celková úspěšnost", f"{pass_rate:.1f}%")
 
-def main():
-    st.title("🔥 Heat Seal Parameter Optimizer")
-    st.markdown("Find optimal sealing parameters for your Doypack production")
+        # Show data source info
+        csv_count = len(load_csv_data()) if not load_csv_data().empty else 0
+        user_count = len(load_user_data_from_db()) if not load_user_data_from_db().empty else 0
+        if csv_count > 0 and user_count > 0:
+            st.sidebar.markdown(f"**Zdroje dat:**")
+            st.sidebar.markdown(f"• CSV: {csv_count} záznamů")
+            st.sidebar.markdown(f"• Ruční: {user_count} záznamů")
 
-    # Data Management Section
-    st.sidebar.header("📊 Data Management")
+def main_page():
+    """Main landing page focused on parameter optimization."""
+    st.title("🔥 Optimalizátor parametrů tepelného svařování")
+    st.markdown("Najděte optimální parametry svařování pro vaši produkci Doypack")
+
+    # Load model and data
+    model, encoder = load_or_train_model()
+    data = load_combined_data()
+
+    if model is None or encoder is None or data is None or data.empty:
+        st.error("⚠️ Model není dostupný nebo nejsou k dispozici data.")
+        st.info("📊 Přejděte na stránku 'Správa dat' pro přidání produkčních dat nebo načtení CSV souboru.")
+        return
+
+    # Main parameter optimization interface
+    optimize_parameters_section(model, encoder, data)
+
+def data_management_page():
+    """Data management page with input and view tabs."""
+    st.title("📊 Správa produkčních dat")
+    st.markdown("Spravujte vaše produkční data a nastavte zdroj dat pro model")
+
+    # Data source selection
+    st.sidebar.header("⚙️ Nastavení")
 
     data_source = st.sidebar.radio(
-        "Data Source",
-        ["CSV File Only", "Manual Input + CSV", "Manual Input Only"],
-        help="Choose how to manage your production data"
+        "Zdroj dat",
+        ["Pouze CSV soubor", "Ruční vstup + CSV", "Pouze ruční vstup"],
+        help="Vyberte, jak chcete spravovat vaše produkční data"
     )
 
     st.session_state.data_source = data_source
 
-    # Load model based on data source
-    model, encoder = load_or_train_model()
+    # Model retraining controls
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**🤖 Model**")
+    if st.sidebar.button("🔄 Přetrénovat model"):
+        st.session_state.model_needs_retraining = True
+        st.cache_resource.clear()
+        st.sidebar.success("Model bude přetrénován!")
 
-    if model is None or encoder is None:
-        st.error("Failed to load or train the model. Please add data or ensure historical_data.csv exists.")
-        if data_source != "CSV File Only":
-            st.info("👇 You can add data manually below to get started!")
-        return
-
-    # Load data for UI options
-    data = load_combined_data()
-    if data is None or data.empty:
-        if data_source != "CSV File Only":
-            st.info("👇 Add some production data to get started!")
-        else:
-            return
-
-    # Main content area
-    if data_source in ["Manual Input + CSV", "Manual Input Only"]:
-        tab1, tab2, tab3 = st.tabs(["🎯 Optimize Parameters", "📝 Add Data", "📊 View Data"])
-
-        with tab2:
-            render_data_entry_form()
-
-        with tab3:
-            render_data_table()
+    # Data management tabs
+    if data_source in ["Ruční vstup + CSV", "Pouze ruční vstup"]:
+        tab1, tab2 = st.tabs(["📝 Přidat nová data", "📊 Zobrazit data"])
 
         with tab1:
-            optimize_parameters_section(model, encoder, data)
+            render_data_entry_form()
+
+        with tab2:
+            render_data_table()
     else:
-        optimize_parameters_section(model, encoder, data)
+        # For CSV only mode, just show the data table
+        render_data_table()
+
+def main():
+    """Main application with page navigation."""
+    # Page navigation in sidebar
+    st.sidebar.title("🧭 Navigace")
+    page = st.sidebar.radio(
+        "Vyberte stránku:",
+        ["🎯 Optimalizace parametrů", "📊 Správa dat"],
+        label_visibility="collapsed"
+    )
+
+    # Route to appropriate page
+    if page == "🎯 Optimalizace parametrů":
+        main_page()
+    elif page == "📊 Správa dat":
+        data_management_page()
 
 if __name__ == "__main__":
     main()
