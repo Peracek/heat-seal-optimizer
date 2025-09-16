@@ -8,7 +8,7 @@ from itertools import product
 import sqlite3
 from datetime import datetime
 
-st.set_page_config(page_title="Optimalizátor parametrů tepelného svařování", layout="wide")
+st.set_page_config(page_title="Optimalizátor parametrů tepelného svařování")
 
 # Initialize session state for data management
 if 'data_source' not in st.session_state:
@@ -816,7 +816,7 @@ def render_dedicated_order_screen():
             outcome_emoji = "✅" if attempt['outcome'] == 'Úspěch' else "❌"
 
             # Create inline layout with text and delete button
-            col1, col2 = st.columns([0.95, 0.05])
+            col1, col2 = st.columns([0.8, 0.2])
             with col1:
                 attempt_text = f"{outcome_emoji} **Pokus {i}:** {attempt['temperature']}°C, {attempt['pressure']} bar, {attempt['dwell_time']}s - {attempt['outcome']}"
                 st.write(attempt_text)
@@ -827,7 +827,7 @@ def render_dedicated_order_screen():
                     st.session_state[confirm_key] = False
 
                 if not st.session_state[confirm_key]:
-                    if st.button("🗑️", key=f"delete_attempt_{attempt['id']}", help="Smazat pokus"):
+                    if st.button("Odstranit", key=f"delete_attempt_{attempt['id']}", help="Smazat pokus"):
                         st.session_state[confirm_key] = True
                         st.rerun()
                 else:
