@@ -777,6 +777,13 @@ def render_dedicated_order_screen():
             st.rerun()
         return
 
+    # Back button at top
+    if st.button("🏠 Zpět na úvodní stránku", key="back_top"):
+        st.session_state.order_screen = False
+        st.session_state.current_order_id = None
+        st.session_state.show_new_order_form = False
+        st.rerun()
+
     # Header with order details
     st.markdown(f"""
     # 📦 Zakázka: **{order['order_code']}**
@@ -816,15 +823,7 @@ def render_dedicated_order_screen():
 
         outcome = st.radio("Výsledek pokusu", ["Neúspěch", "Úspěch"], horizontal=True)
 
-        st.markdown("---")
-
-        col_submit, col_back = st.columns([3, 1])
-
-        with col_submit:
-            submitted = st.form_submit_button("➕ Přidat pokus", type="primary")
-
-        with col_back:
-            back_submitted = st.form_submit_button("🏠 Zpět", help="Zpět na úvodní stránku")
+        submitted = st.form_submit_button("➕ Přidat pokus", type="primary")
 
         if submitted:
             if 100 <= temperature <= 220 and 1.0 <= pressure <= 8.0 and 0.1 <= dwell_time <= 3.0:
@@ -834,12 +833,13 @@ def render_dedicated_order_screen():
             else:
                 st.error("❌ Neplatné rozsahy parametrů!")
 
-        if back_submitted:
-            # Return to main page
-            st.session_state.order_screen = False
-            st.session_state.current_order_id = None
-            st.session_state.show_new_order_form = False
-            st.rerun()
+    # Back button at bottom
+    st.markdown("---")
+    if st.button("🏠 Zpět na úvodní stránku", key="back_bottom"):
+        st.session_state.order_screen = False
+        st.session_state.current_order_id = None
+        st.session_state.show_new_order_form = False
+        st.rerun()
 
 
 def main_page():
