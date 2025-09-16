@@ -479,7 +479,7 @@ def render_data_entry_form():
         with col2:
             temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
             pressure = st.number_input("Tlak svařování (bar)", 1.0, 8.0, 4.0, 0.1)
-            dwell_time = st.number_input("Doba zdržení (s)", 0.1, 3.0, 1.0, 0.1)
+            dwell_time = st.number_input("Doba svařování (s)", 0.1, 3.0, 1.0, 0.1)
 
         outcome = st.radio("Výsledek", ["Úspěch", "Neúspěch"], horizontal=True)
 
@@ -614,9 +614,9 @@ def optimize_parameters_section(model, encoder, data):
 
                 with metric_col2:
                     st.metric(
-                        "⏱️ Doba zdržení",
+                        "⏱️ Doba svařování",
                         f"{optimal_params['dwell_time']:.1f}s",
-                        help="Doporučená doba zdržení"
+                        help="Doporučená doba svařování"
                     )
 
                 # Additional info
@@ -686,7 +686,7 @@ def render_recommendation_history():
                         st.metric("⚡ Tlak", f"{pressure:.1f} bar")
 
                     with col2:
-                        st.metric("⏱️ Doba zdržení", f"{dwell:.1f}s")
+                        st.metric("⏱️ Doba svařování", f"{dwell:.1f}s")
                         if pd.notna(rec['user_feedback']):
                             feedback_emoji = "👍" if rec['user_feedback'] == "good" else "👎"
                             st.write(f"**Zpětná vazba:** {feedback_emoji}")
@@ -889,7 +889,7 @@ def render_dedicated_order_screen():
     with st.form("attempt_form"):
         temperature = st.slider("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
         pressure = st.slider("Tlak svařování (bar)", 1.0, 8.0, 4.0, 0.1)
-        dwell_time = st.slider("Doba zdržení (s)", 0.1, 3.0, 1.0, 0.1)
+        dwell_time = st.slider("Doba svařování (s)", 0.1, 3.0, 1.0, 0.1)
 
         outcome = st.radio("Výsledek pokusu", ["Neúspěch", "Úspěch"], horizontal=True)
 
