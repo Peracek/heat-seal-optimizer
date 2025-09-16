@@ -852,7 +852,11 @@ def render_dedicated_order_screen():
             # Create inline layout with text and delete button
             col1, col2 = st.columns([0.8, 0.2])
             with col1:
-                attempt_text = f"{outcome_emoji} **Pokus {i}:** {attempt['temperature']}°C, {attempt['pressure']} bar, {attempt['dwell_time']}s - {attempt['outcome']}"
+                # Format values to avoid floating point precision display issues
+                temp_formatted = f"{attempt['temperature']:.1f}" if attempt['temperature'] % 1 != 0 else f"{int(attempt['temperature'])}"
+                pressure_formatted = f"{attempt['pressure']:.1f}"
+                dwell_formatted = f"{attempt['dwell_time']:.1f}"
+                attempt_text = f"{outcome_emoji} **Pokus {i}:** {temp_formatted}°C, {pressure_formatted} bar, {dwell_formatted}s - {attempt['outcome']}"
                 st.write(attempt_text)
             with col2:
                 # Use session state to track confirmation state
@@ -883,14 +887,9 @@ def render_dedicated_order_screen():
     st.subheader("🔬 Nový pokus")
 
     with st.form("attempt_form"):
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
-        with col2:
-            pressure = st.number_input("Tlak svařování (bar)", 1.0, 8.0, 4.0, 0.1)
-        with col3:
-            dwell_time = st.number_input("Doba zdržení (s)", 0.1, 3.0, 1.0, 0.1)
+        temperature = st.slider("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
+        pressure = st.slider("Tlak svařování (bar)", 1.0, 8.0, 4.0, 0.1)
+        dwell_time = st.slider("Doba zdržení (s)", 0.1, 3.0, 1.0, 0.1)
 
         outcome = st.radio("Výsledek pokusu", ["Neúspěch", "Úspěch"], horizontal=True)
 
