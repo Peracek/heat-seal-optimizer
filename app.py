@@ -7,6 +7,7 @@ import joblib
 from itertools import product
 import sqlite3
 from datetime import datetime
+import os
 
 st.set_page_config(page_title="Optimalizátor parametrů tepelného svařování")
 
@@ -1006,16 +1007,16 @@ def main():
     st.sidebar.title("🧭 Navigace")
     page = st.sidebar.radio(
         "Vyberte stránku:",
-        ["🔥 Sběr dat", "📊 Správa dat", "🎯 Optimalizace parametrů"],
+        ["🔥 Sběr dat", "🎯 Výpočet parametrů", "📊 Přehled dat"],
         label_visibility="collapsed"
     )
 
     # Route to appropriate page
     if page == "🔥 Sběr dat":
         main_page()
-    elif page == "📊 Správa dat":
+    elif page == "📊 Přehled dat":
         data_management_page()
-    elif page == "🎯 Optimalizace parametrů":
+    elif page == "🎯 Výpočet parametrů":
         optimization_page()
 
 if __name__ == "__main__":
