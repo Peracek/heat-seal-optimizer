@@ -272,6 +272,15 @@ def get_order_attempts(order_id):
         'created_at': row[5]
     } for row in results]
 
+def delete_attempt(attempt_id):
+    """Delete an attempt by ID."""
+    init_database()
+    conn = sqlite3.connect('user_data.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM attempts WHERE id = ?', (attempt_id,))
+    conn.commit()
+    conn.close()
+
 def load_combined_data():
     """Load and combine database data sources: user data, attempts data, and feedback data."""
     user_data = load_user_data_from_db()
@@ -805,7 +814,35 @@ def render_dedicated_order_screen():
         st.subheader("📊 Historie pokusů")
         for i, attempt in enumerate(attempts, 1):
             outcome_emoji = "✅" if attempt['outcome'] == 'Úspěch' else "❌"
-            st.write(f"{outcome_emoji} **Pokus {i}:** {attempt['temperature']}°C, {attempt['pressure']} bar, {attempt['dwell_time']}s - {attempt['outcome']}")
+
+            # Create inline layout with text and delete button
+            col1, col2 = st.columns([0.95, 0.05])
+            with col1:
+                attempt_text = f"{outcome_emoji} **Pokus {i}:** {attempt['temperature']}°C, {attempt['pressure']} bar, {attempt['dwell_time']}s - {attempt['outcome']}"
+                st.write(attempt_text)
+            with col2:
+                # Use session state to track confirmation state
+                confirm_key = f"confirm_delete_{attempt['id']}"
+                if confirm_key not in st.session_state:
+                    st.session_state[confirm_key] = False
+
+                if not st.session_state[confirm_key]:
+                    if st.button("🗑️", key=f"delete_attempt_{attempt['id']}", help="Smazat pokus"):
+                        st.session_state[confirm_key] = True
+                        st.rerun()
+                else:
+                    # Show confirmation buttons
+                    sub_col1, sub_col2 = st.columns(2)
+                    with sub_col1:
+                        if st.button("✅", key=f"confirm_yes_{attempt['id']}", help="Ano, smazat"):
+                            delete_attempt(attempt['id'])
+                            st.session_state[confirm_key] = False
+                            st.success("✅ Pokus byl smazán!")
+                            st.rerun()
+                    with sub_col2:
+                        if st.button("❌", key=f"confirm_no_{attempt['id']}", help="Ne, zrušit"):
+                            st.session_state[confirm_key] = False
+                            st.rerun()
         st.markdown("---")
 
     # Add new attempt form
