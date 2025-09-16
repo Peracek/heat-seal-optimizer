@@ -704,11 +704,9 @@ def render_order_list():
     for order in orders:
         # Get attempt count for this order
         attempts = get_order_attempts(order['id'])
-        attempt_count = len(attempts)
-        success_count = len([a for a in attempts if a['outcome'] == 'Úspěch'])
 
-        with st.expander(f"📦 **{order['order_code']}** ({attempt_count} pokusů, {success_count} úspěšných)"):
-            col1, col2, col3 = st.columns([2, 2, 1])
+        with st.expander(f"📦  **{order['order_code']}** ({order['created_at'][:16]})"):
+            col1, col2 = st.columns([3, 1])
 
             with col1:
                 st.write(f"**Materiál:** {order['material_type']}")
@@ -716,9 +714,6 @@ def render_order_list():
                 st.write(f"**Pokrytí:** {order['print_coverage']}%")
 
             with col2:
-                st.write(f"**Vytvořeno:** {order['created_at'][:16] if order['created_at'] else 'N/A'}")
-
-            with col3:
                 if st.button("📝 Otevřít zakázku", key=f"open_{order['id']}", type="primary"):
                     st.session_state.current_order_id = order['id']
                     st.session_state.order_screen = True
@@ -750,7 +745,7 @@ def render_new_order_form():
             print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
             ink_type = st.selectbox("Typ barvy v oblasti svařování", ink_options)
 
-        submitted = st.form_submit_button("🚀 Zahájit zakázku", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("🚀 Začít", type="primary", use_container_width=True)
 
         if submitted:
             if order_code.strip():
@@ -890,7 +885,7 @@ def main_page():
     st.markdown("**Fáze 1:** Sběr produkčních dat pro trénování modelu")
 
     # Primary call-to-action: Create new order button
-    if st.button("➕ Vytvořit novou zakázku", type="primary"):
+    if st.button("➕ Nová zakázka", type="primary"):
         st.session_state.show_new_order_form = True
         st.rerun()
 
