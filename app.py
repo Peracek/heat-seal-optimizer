@@ -4,7 +4,6 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 import joblib
-import os
 from itertools import product
 import sqlite3
 from datetime import datetime
@@ -259,24 +258,14 @@ def get_order_attempts(order_id):
         'created_at': row[5]
     } for row in results]
 
-@st.cache_data
-def load_csv_data():
-    """Load historical data from CSV file."""
-    if not os.path.exists('historical_data.csv'):
-        return pd.DataFrame()
-    return pd.read_csv('historical_data.csv')
-
 def load_combined_data():
-    """Load and combine CSV, user data, attempts data, and feedback data."""
-    csv_data = load_csv_data()
+    """Load and combine database data sources: user data, attempts data, and feedback data."""
     user_data = load_user_data_from_db()
     attempts_data = load_attempts_data()
     feedback_data = load_feedback_as_training_data()
 
     # Combine all data sources
     all_data = []
-    if not csv_data.empty:
-        all_data.append(csv_data)
     if not user_data.empty:
         all_data.append(user_data)
     if not attempts_data.empty:
@@ -411,21 +400,16 @@ def render_data_entry_form():
     """Render the data entry form."""
     st.subheader("📝 Přidat nová produkční data")
 
-    # Get existing data for options
-    csv_data = load_csv_data()
-    if not csv_data.empty:
-        material_options = csv_data['Material_Type'].unique().tolist()
-        ink_options = csv_data['Ink_Type'].unique().tolist()
-    else:
-        material_options = [
-            'Papír + PET + LDPE',
-            'Papír + Al + LDPE',
-            'PET + Al + LDPE',
-            'BOPP + BOPP + CPP',
-            'PET + PETmet + LDPE',
-            'BOPP + PETmet + LDPE'
-        ]
-        ink_options = ['Světlá', 'Tmavá', 'Metalická']
+    # Default material and ink options
+    material_options = [
+        'Papír + PET + LDPE',
+        'Papír + Al + LDPE',
+        'PET + Al + LDPE',
+        'BOPP + BOPP + CPP',
+        'PET + PETmet + LDPE',
+        'BOPP + PETmet + LDPE'
+    ]
+    ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
     with st.form("data_entry_form"):
         col1, col2 = st.columns(2)
@@ -603,14 +587,11 @@ def optimize_parameters_section(model, encoder, data):
         st.sidebar.metric("Celková úspěšnost", f"{pass_rate:.1f}%")
 
         # Show data source info
-        csv_count = len(load_csv_data()) if not load_csv_data().empty else 0
         user_count = len(load_user_data_from_db()) if not load_user_data_from_db().empty else 0
         attempts_count = len(load_attempts_data()) if not load_attempts_data().empty else 0
         feedback_count = len(load_feedback_as_training_data()) if not load_feedback_as_training_data().empty else 0
-        if csv_count > 0 or user_count > 0 or attempts_count > 0 or feedback_count > 0:
+        if user_count > 0 or attempts_count > 0 or feedback_count > 0:
             st.sidebar.markdown(f"**Zdroje dat:**")
-            if csv_count > 0:
-                st.sidebar.markdown(f"• CSV: {csv_count} záznamů")
             if user_count > 0:
                 st.sidebar.markdown(f"• Ruční: {user_count} záznamů")
             if attempts_count > 0:
@@ -691,21 +672,16 @@ def render_new_order_form():
     """Render the new order creation form."""
     st.subheader("📋 Nová zakázka")
 
-    # Get material and ink options
-    csv_data = load_csv_data()
-    if not csv_data.empty:
-        material_options = csv_data['Material_Type'].unique().tolist()
-        ink_options = csv_data['Ink_Type'].unique().tolist()
-    else:
-        material_options = [
-            'Papír + PET + LDPE',
-            'Papír + Al + LDPE',
-            'PET + Al + LDPE',
-            'BOPP + BOPP + CPP',
-            'PET + PETmet + LDPE',
-            'BOPP + PETmet + LDPE'
-        ]
-        ink_options = ['Světlá', 'Tmavá', 'Metalická']
+    # Default material and ink options
+    material_options = [
+        'Papír + PET + LDPE',
+        'Papír + Al + LDPE',
+        'PET + Al + LDPE',
+        'BOPP + BOPP + CPP',
+        'PET + PETmet + LDPE',
+        'BOPP + PETmet + LDPE'
+    ]
+    ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
     with st.form("new_order_form"):
         col1, col2 = st.columns(2)
@@ -852,7 +828,7 @@ def load_attempts_data():
 def data_management_page():
     """Data management page - view only."""
     st.title("📊 Správa produkčních dat")
-    st.markdown("Přehled všech produkčních dat z CSV souboru, ručního vstupu a pokusů ze zakázek")
+    st.markdown("Přehled všech produkčních dat z databáze: ruční vstup, pokusy ze zakázek a zpětná vazba")
 
     # Model retraining controls
     st.sidebar.header("⚙️ Nastavení modelu")
@@ -862,7 +838,7 @@ def data_management_page():
         st.sidebar.success("Model bude přetrénován!")
 
     # Data viewing tabs
-    tab1, tab2, tab3 = st.tabs(["📊 Všechna data", "📋 Data ze zakázek", "📄 Historická data"])
+    tab1, tab2 = st.tabs(["📊 Všechna data", "📋 Data ze zakázek"])
 
     with tab1:
         render_data_table()
@@ -889,25 +865,6 @@ def data_management_page():
                     st.metric("Poslední pokus", latest_attempt[:10] if latest_attempt else "N/A")
         else:
             st.info("Zatím nebyly zaznamenány žádné pokusy ze zakázek.")
-
-    with tab3:
-        st.subheader("📄 Historická data (CSV)")
-        csv_data = load_csv_data()
-        if not csv_data.empty:
-            st.dataframe(csv_data, use_container_width=True)
-
-            # Statistics
-            st.subheader("📈 Statistiky CSV dat")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Celkem záznamů", len(csv_data))
-            with col2:
-                pass_rate = (csv_data['Outcome'] == 'Pass').mean() * 100
-                st.metric("Úspěšnost", f"{pass_rate:.1f}%")
-            with col3:
-                st.metric("Typů materiálů", csv_data['Material_Type'].nunique())
-        else:
-            st.info("CSV soubor nebyl nalezen nebo je prázdný.")
 
 def optimization_page():
     """Optimization page - currently disabled, showing data gathering phase message."""
