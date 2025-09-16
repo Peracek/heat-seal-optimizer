@@ -334,6 +334,39 @@ def load_feedback_as_training_data():
     finally:
         conn.close()
 
+def import_demo_data_to_db():
+    """Import demo data from CSV file into the database."""
+    try:
+        # Read the demo CSV file
+        demo_df = pd.read_csv('demodata.csv')
+
+        init_database()
+        conn = sqlite3.connect('user_data.db')
+        cursor = conn.cursor()
+
+        # Import each row into the production_data table
+        for _, row in demo_df.iterrows():
+            cursor.execute('''
+                INSERT INTO production_data
+                (material_type, print_coverage, ink_type, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                row['Material_Type'],
+                row['Print_Coverage'],
+                row['Ink_Type'],
+                row['Sealing_Temperature_C'],
+                row['Sealing_Pressure_bar'],
+                row['Dwell_Time_s'],
+                row['Outcome']
+            ))
+
+        conn.commit()
+        conn.close()
+        return len(demo_df)
+    except Exception as e:
+        print(f"Error importing demo data: {e}")
+        return 0
+
 @st.cache_resource
 def load_or_train_model():
     """Load existing model or train new one if it doesn't exist."""
