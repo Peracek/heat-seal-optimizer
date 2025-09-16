@@ -39,9 +39,7 @@ def init_database():
             material_type TEXT,
             print_coverage INTEGER,
             ink_type TEXT,
-            status TEXT DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -192,18 +190,17 @@ def create_order(order_code, material_type, print_coverage, ink_type):
     finally:
         conn.close()
 
-def get_active_order():
-    """Get the currently active order."""
+
+def get_order_by_id(order_id):
+    """Get order details by ID."""
     init_database()
     conn = sqlite3.connect('user_data.db')
     cursor = conn.cursor()
     cursor.execute('''
         SELECT id, order_code, material_type, print_coverage, ink_type, created_at
         FROM orders
-        WHERE status = 'active'
-        ORDER BY created_at DESC
-        LIMIT 1
-    ''')
+        WHERE id = ?
+    ''', (order_id,))
     result = cursor.fetchone()
     conn.close()
     if result:
@@ -217,37 +214,13 @@ def get_active_order():
         }
     return None
 
-def get_order_by_id(order_id):
-    """Get order details by ID."""
-    init_database()
-    conn = sqlite3.connect('user_data.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT id, order_code, material_type, print_coverage, ink_type, created_at, status
-        FROM orders
-        WHERE id = ?
-    ''', (order_id,))
-    result = cursor.fetchone()
-    conn.close()
-    if result:
-        return {
-            'id': result[0],
-            'order_code': result[1],
-            'material_type': result[2],
-            'print_coverage': result[3],
-            'ink_type': result[4],
-            'created_at': result[5],
-            'status': result[6]
-        }
-    return None
-
 def get_all_orders():
     """Get all orders ordered by creation date (newest first)."""
     init_database()
     conn = sqlite3.connect('user_data.db')
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT id, order_code, material_type, print_coverage, ink_type, created_at, status, completed_at
+        SELECT id, order_code, material_type, print_coverage, ink_type, created_at
         FROM orders
         ORDER BY created_at DESC
     ''')
@@ -259,23 +232,9 @@ def get_all_orders():
         'material_type': row[2],
         'print_coverage': row[3],
         'ink_type': row[4],
-        'created_at': row[5],
-        'status': row[6],
-        'completed_at': row[7]
+        'created_at': row[5]
     } for row in results]
 
-def complete_order(order_id):
-    """Mark an order as completed."""
-    init_database()
-    conn = sqlite3.connect('user_data.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE orders
-        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (order_id,))
-    conn.commit()
-    conn.close()
 
 def add_attempt(order_id, temperature, pressure, dwell_time, outcome):
     """Add an attempt to an order."""
@@ -739,15 +698,7 @@ def render_order_list():
         attempt_count = len(attempts)
         success_count = len([a for a in attempts if a['outcome'] == 'Úspěch'])
 
-        # Status emoji and color
-        if order['status'] == 'completed':
-            status_emoji = "✅"
-            status_text = "Dokončena"
-        else:
-            status_emoji = "🔄"
-            status_text = "Aktivní"
-
-        with st.expander(f"{status_emoji} **{order['order_code']}** - {status_text} ({attempt_count} pokusů, {success_count} úspěšných)"):
+        with st.expander(f"📦 **{order['order_code']}** ({attempt_count} pokusů, {success_count} úspěšných)"):
             col1, col2, col3 = st.columns([2, 2, 1])
 
             with col1:
@@ -757,21 +708,12 @@ def render_order_list():
 
             with col2:
                 st.write(f"**Vytvořeno:** {order['created_at'][:16] if order['created_at'] else 'N/A'}")
-                if order['completed_at']:
-                    st.write(f"**Dokončeno:** {order['completed_at'][:16]}")
-                st.write(f"**Status:** {status_text}")
 
             with col3:
-                if order['status'] == 'active':
-                    if st.button("📝 Pracovat na zakázce", key=f"work_{order['id']}", type="primary"):
-                        st.session_state.current_order_id = order['id']
-                        st.session_state.order_screen = True
-                        st.rerun()
-                else:
-                    if st.button("👁️ Zobrazit", key=f"view_{order['id']}", type="secondary"):
-                        st.session_state.current_order_id = order['id']
-                        st.session_state.order_screen = True
-                        st.rerun()
+                if st.button("📝 Otevřít zakázku", key=f"open_{order['id']}", type="primary"):
+                    st.session_state.current_order_id = order['id']
+                    st.session_state.order_screen = True
+                    st.rerun()
 
 def render_new_order_form():
     """Render the new order creation form."""
@@ -876,16 +818,10 @@ def render_dedicated_order_screen():
 
         st.markdown("---")
 
-        col_submit, col_complete, col_back = st.columns([2, 2, 1])
+        col_submit, col_back = st.columns([3, 1])
 
         with col_submit:
             submitted = st.form_submit_button("➕ Přidat pokus", type="primary")
-
-        with col_complete:
-            if outcome == "Úspěch":
-                complete_submitted = st.form_submit_button("✅ Dokončit zakázku", type="secondary")
-            else:
-                complete_submitted = False
 
         with col_back:
             back_submitted = st.form_submit_button("🏠 Zpět", help="Zpět na úvodní stránku")
@@ -898,85 +834,13 @@ def render_dedicated_order_screen():
             else:
                 st.error("❌ Neplatné rozsahy parametrů!")
 
-        if complete_submitted:
-            add_attempt(order['id'], temperature, pressure, dwell_time, outcome)
-            complete_order(order['id'])
-            st.success(f"🎉 Zakázka {order['order_code']} byla dokončena!")
+        if back_submitted:
             # Return to main page
             st.session_state.order_screen = False
             st.session_state.current_order_id = None
             st.session_state.show_new_order_form = False
             st.rerun()
 
-        if back_submitted:
-            # Return to main page without completing order
-            st.session_state.order_screen = False
-            st.session_state.current_order_id = None
-            st.session_state.show_new_order_form = False
-            st.rerun()
-
-def render_order_attempts():
-    """Render the order attempts interface."""
-    active_order = get_active_order()
-
-    if not active_order:
-        return
-
-    # Order header
-    st.markdown(f"""
-    ### 📦 Aktivní zakázka: **{active_order['order_code']}**
-    **Materiál:** {active_order['material_type']} | **Barva:** {active_order['ink_type']} | **Pokrytí:** {active_order['print_coverage']}%
-    """)
-
-    # Get existing attempts
-    attempts = get_order_attempts(active_order['id'])
-
-    # Show existing attempts
-    if attempts:
-        st.subheader("📊 Historie pokusů")
-        for i, attempt in enumerate(attempts, 1):
-            outcome_emoji = "✅" if attempt['outcome'] == 'Úspěch' else "❌"
-            st.write(f"{outcome_emoji} **Pokus {i}:** {attempt['temperature']}°C, {attempt['pressure']} bar, {attempt['dwell_time']}s - {attempt['outcome']}")
-
-    # Add new attempt form
-    st.subheader("🔬 Nový pokus")
-
-    with st.form("attempt_form"):
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
-        with col2:
-            pressure = st.number_input("Tlak svařování (bar)", 1.0, 8.0, 4.0, 0.1)
-        with col3:
-            dwell_time = st.number_input("Doba zdržení (s)", 0.1, 3.0, 1.0, 0.1)
-
-        outcome = st.radio("Výsledek pokusu", ["Neúspěch", "Úspěch"], horizontal=True)
-
-        col_submit, col_complete = st.columns([2, 1])
-
-        with col_submit:
-            submitted = st.form_submit_button("➕ Přidat pokus", type="primary")
-
-        with col_complete:
-            if outcome == "Úspěch":
-                complete_submitted = st.form_submit_button("✅ Dokončit zakázku", type="secondary")
-            else:
-                complete_submitted = False
-
-        if submitted:
-            if 100 <= temperature <= 220 and 1.0 <= pressure <= 8.0 and 0.1 <= dwell_time <= 3.0:
-                add_attempt(active_order['id'], temperature, pressure, dwell_time, outcome)
-                st.success(f"✅ Pokus přidán!")
-                st.rerun()
-            else:
-                st.error("❌ Neplatné rozsahy parametrů!")
-
-        if complete_submitted:
-            add_attempt(active_order['id'], temperature, pressure, dwell_time, outcome)
-            complete_order(active_order['id'])
-            st.success(f"🎉 Zakázka {active_order['order_code']} byla dokončena!")
-            st.rerun()
 
 def main_page():
     """Main page for data gathering phase."""
