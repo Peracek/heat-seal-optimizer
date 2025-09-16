@@ -735,14 +735,19 @@ def render_new_order_form():
     ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
     with st.form("new_order_form"):
-        col1, col2 = st.columns(2)
+        # Order identification section
+        st.markdown("**📋 Identifikace zakázky:**")
+        order_code = st.text_input("Kód zakázky", placeholder="např. Z2024-001")
 
+        st.markdown("---")
+        st.markdown("**🏭 Parametry materiálu a tisku:**")
+
+        col1, col2 = st.columns(2)
         with col1:
-            order_code = st.text_input("Kód zakázky", placeholder="např. Z2024-001")
             material_type = st.selectbox("Typ materiálu", material_options)
+            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
 
         with col2:
-            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
             ink_type = st.selectbox("Typ barvy v oblasti svařování", ink_options)
 
         submitted = st.form_submit_button("🚀 Začít", type="primary", use_container_width=True)
