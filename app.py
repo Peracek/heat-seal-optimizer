@@ -781,80 +781,73 @@ def optimize_parameters_section(model, encoder, data):
                 # Display results organized by sealing phases
                 st.markdown("### 📋 Doporučené parametry pro všechny fáze")
 
-                # Create tabs for each phase
-                tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-                    "🔗 Zip", "⬇️ Spodek", "🔷 E", "🔶 D", "🔸 C", "🔹 B", "🔺 A"
-                ])
+                # Zipper phase
+                st.markdown("**🔗 Svařování zipu**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['zipper_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['zipper_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['zipper_dwell_time']:.1f}s")
 
-                with tab1:
-                    st.markdown("**🔗 Svařování zipu**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['zipper_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['zipper_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['zipper_dwell_time']:.1f}s")
+                st.markdown("---")
 
-                with tab2:
-                    st.markdown("**⬇️ Svařování spodku**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['bottom_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['bottom_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['bottom_dwell_time']:.1f}s")
+                # Bottom phase
+                st.markdown("**⬇️ Svařování spodku**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['bottom_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['bottom_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['bottom_dwell_time']:.1f}s")
 
-                with tab3:
-                    st.markdown("**🔷 Svařování strany E**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['side_e_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['side_e_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['side_e_dwell_time']:.1f}s")
+                # Side phases
+                st.markdown("**🔷 Svařování strany E**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['side_e_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['side_e_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['side_e_dwell_time']:.1f}s")
 
-                with tab4:
-                    st.markdown("**🔶 Svařování strany D**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['side_d_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['side_d_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['side_d_dwell_time']:.1f}s")
+                st.markdown("**🔶 Svařování strany D**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['side_d_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['side_d_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['side_d_dwell_time']:.1f}s")
 
-                with tab5:
-                    st.markdown("**🔸 Svařování strany C**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['side_c_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['side_c_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['side_c_dwell_time']:.1f}s")
+                st.markdown("**🔸 Svařování strany C**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['side_c_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['side_c_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['side_c_dwell_time']:.1f}s")
 
-                with tab6:
-                    st.markdown("**🔹 Svařování strany B**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['side_b_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['side_b_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['side_b_dwell_time']:.1f}s")
+                st.markdown("**🔹 Svařování strany B**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['side_b_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['side_b_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['side_b_dwell_time']:.1f}s")
 
-                with tab7:
-                    st.markdown("**🔺 Svařování strany A**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("🌡️ Teplota", f"{optimal_params['side_a_temperature']:.0f}°C")
-                    with col2:
-                        st.metric("⚡ Tlak", f"{optimal_params['side_a_pressure']:.1f} bar")
-                    with col3:
-                        st.metric("⏱️ Doba", f"{optimal_params['side_a_dwell_time']:.1f}s")
+                st.markdown("**🔺 Svařování strany A**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("🌡️ Teplota", f"{optimal_params['side_a_temperature']:.0f}°C")
+                with col2:
+                    st.metric("⚡ Tlak", f"{optimal_params['side_a_pressure']:.1f} bar")
+                with col3:
+                    st.metric("⏱️ Doba", f"{optimal_params['side_a_dwell_time']:.1f}s")
 
                 # Summary info
                 st.info(f"""
@@ -1092,96 +1085,95 @@ def render_dedicated_order_screen():
 
             with st.expander(f"{outcome_emoji} **Pokus {i}** - {attempt['outcome']} ({attempt['created_at'][:16] if attempt['created_at'] else ''})"):
                 if has_multiphase:
-                    # Display multi-phase parameters in organized tabs
+                    # Display multi-phase parameters stacked vertically
                     st.markdown("**🔧 Parametry všech fází svařování:**")
 
-                    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-                        "🔗 Zip", "⬇️ Spodek", "🔷 E", "🔶 D", "🔸 C", "🔹 B", "🔺 A"
-                    ])
+                    # Zipper phase
+                    st.markdown("**🔗 Svařování zipu**")
+                    if attempt['zipper_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['zipper_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['zipper_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['zipper_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
-                    with tab1:
-                        if attempt['zipper_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['zipper_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['zipper_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['zipper_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
+                    # Bottom phase
+                    st.markdown("**⬇️ Svařování spodku**")
+                    if attempt['bottom_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['bottom_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['bottom_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['bottom_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
-                    with tab2:
-                        if attempt['bottom_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['bottom_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['bottom_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['bottom_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
+                    # Side phases
+                    st.markdown("**🔷 Svařování strany E**")
+                    if attempt['side_e_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['side_e_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['side_e_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['side_e_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
-                    with tab3:
-                        if attempt['side_e_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['side_e_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['side_e_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['side_e_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
+                    st.markdown("**🔶 Svařování strany D**")
+                    if attempt['side_d_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['side_d_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['side_d_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['side_d_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
-                    with tab4:
-                        if attempt['side_d_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['side_d_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['side_d_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['side_d_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
+                    st.markdown("**🔸 Svařování strany C**")
+                    if attempt['side_c_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['side_c_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['side_c_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['side_c_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
-                    with tab5:
-                        if attempt['side_c_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['side_c_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['side_c_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['side_c_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
+                    st.markdown("**🔹 Svařování strany B**")
+                    if attempt['side_b_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['side_b_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['side_b_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['side_b_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
-                    with tab6:
-                        if attempt['side_b_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['side_b_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['side_b_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['side_b_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
-
-                    with tab7:
-                        if attempt['side_a_temperature']:
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.write(f"🌡️ {attempt['side_a_temperature']:.0f}°C")
-                            with col2:
-                                st.write(f"⚡ {attempt['side_a_pressure']:.1f} bar")
-                            with col3:
-                                st.write(f"⏱️ {attempt['side_a_dwell_time']:.1f}s")
-                        else:
-                            st.write("*Nezadáno*")
+                    st.markdown("**🔺 Svařování strany A**")
+                    if attempt['side_a_temperature']:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"🌡️ {attempt['side_a_temperature']:.0f}°C")
+                        with col2:
+                            st.write(f"⚡ {attempt['side_a_pressure']:.1f} bar")
+                        with col3:
+                            st.write(f"⏱️ {attempt['side_a_dwell_time']:.1f}s")
+                    else:
+                        st.write("*Nezadáno*")
 
                 else:
                     # Display legacy single-phase parameters
@@ -1231,82 +1223,77 @@ def render_dedicated_order_screen():
     with st.form("attempt_form"):
         st.markdown("**📋 Parametry svařování pro všechny fáze**")
 
-        # Create tabs/sections for each sealing phase
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-            "🔗 Zip", "⬇️ Spodek", "🔷 Strana E", "🔶 Strana D", "🔸 Strana C", "🔹 Strana B", "🔺 Strana A"
-        ])
-
         params = {}
 
-        with tab1:
-            st.markdown("**🔗 Svařování zipu**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['zipper_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 150.0, 1.0, key="zip_temp")
-            with col2:
-                params['zipper_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.0, 0.1, key="zip_press")
-            with col3:
-                params['zipper_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.0, 0.1, key="zip_time")
+        # Zipper sealing phase
+        st.markdown("**🔗 Svařování zipu**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['zipper_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 150.0, 1.0, key="zip_temp")
+        with col2:
+            params['zipper_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.0, 0.1, key="zip_press")
+        with col3:
+            params['zipper_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.0, 0.1, key="zip_time")
 
-        with tab2:
-            st.markdown("**⬇️ Svařování spodku**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['bottom_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 160.0, 1.0, key="bottom_temp")
-            with col2:
-                params['bottom_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.5, 0.1, key="bottom_press")
-            with col3:
-                params['bottom_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.2, 0.1, key="bottom_time")
+        st.markdown("---")
 
-        with tab3:
-            st.markdown("**🔷 Svařování strany E**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['side_e_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 155.0, 1.0, key="side_e_temp")
-            with col2:
-                params['side_e_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.2, 0.1, key="side_e_press")
-            with col3:
-                params['side_e_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.1, 0.1, key="side_e_time")
+        # Bottom sealing phase
+        st.markdown("**⬇️ Svařování spodku**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['bottom_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 160.0, 1.0, key="bottom_temp")
+        with col2:
+            params['bottom_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.5, 0.1, key="bottom_press")
+        with col3:
+            params['bottom_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.2, 0.1, key="bottom_time")
 
-        with tab4:
-            st.markdown("**🔶 Svařování strany D**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['side_d_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 158.0, 1.0, key="side_d_temp")
-            with col2:
-                params['side_d_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.3, 0.1, key="side_d_press")
-            with col3:
-                params['side_d_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.15, 0.1, key="side_d_time")
+        st.markdown("---")
 
-        with tab5:
-            st.markdown("**🔸 Svařování strany C**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['side_c_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 162.0, 1.0, key="side_c_temp")
-            with col2:
-                params['side_c_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.4, 0.1, key="side_c_press")
-            with col3:
-                params['side_c_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.2, 0.1, key="side_c_time")
+        # Side sealing phases
+        st.markdown("**🔷 Svařování strany E**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['side_e_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 155.0, 1.0, key="side_e_temp")
+        with col2:
+            params['side_e_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.2, 0.1, key="side_e_press")
+        with col3:
+            params['side_e_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.1, 0.1, key="side_e_time")
 
-        with tab6:
-            st.markdown("**🔹 Svařování strany B**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['side_b_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 165.0, 1.0, key="side_b_temp")
-            with col2:
-                params['side_b_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.5, 0.1, key="side_b_press")
-            with col3:
-                params['side_b_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.25, 0.1, key="side_b_time")
+        st.markdown("**🔶 Svařování strany D**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['side_d_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 158.0, 1.0, key="side_d_temp")
+        with col2:
+            params['side_d_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.3, 0.1, key="side_d_press")
+        with col3:
+            params['side_d_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.15, 0.1, key="side_d_time")
 
-        with tab7:
-            st.markdown("**🔺 Svařování strany A**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                params['side_a_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 168.0, 1.0, key="side_a_temp")
-            with col2:
-                params['side_a_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.6, 0.1, key="side_a_press")
-            with col3:
-                params['side_a_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.3, 0.1, key="side_a_time")
+        st.markdown("**🔸 Svařování strany C**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['side_c_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 162.0, 1.0, key="side_c_temp")
+        with col2:
+            params['side_c_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.4, 0.1, key="side_c_press")
+        with col3:
+            params['side_c_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.2, 0.1, key="side_c_time")
+
+        st.markdown("**🔹 Svařování strany B**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['side_b_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 165.0, 1.0, key="side_b_temp")
+        with col2:
+            params['side_b_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.5, 0.1, key="side_b_press")
+        with col3:
+            params['side_b_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.25, 0.1, key="side_b_time")
+
+        st.markdown("**🔺 Svařování strany A**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            params['side_a_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 168.0, 1.0, key="side_a_temp")
+        with col2:
+            params['side_a_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.6, 0.1, key="side_a_press")
+        with col3:
+            params['side_a_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.3, 0.1, key="side_a_time")
 
         st.markdown("---")
         outcome = st.radio("**🎯 Výsledek pokusu**", ["Neúspěch", "Úspěch"], horizontal=True)
