@@ -1220,6 +1220,7 @@ def render_dedicated_order_screen():
     # Add new attempt form
     st.subheader("🔬 Nový pokus - Všechny fáze svařování")
 
+    # Form for all parameters except the align button
     with st.form("attempt_form"):
         st.markdown("**📋 Parametry svařování pro všechny fáze**")
 
@@ -1259,41 +1260,64 @@ def render_dedicated_order_screen():
         with col3:
             params['side_e_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.1, 0.1, key="side_e_time")
 
+        # Align button right next to Stage E
+        align_button = st.form_submit_button("🔗 Zarovnat zbývající strany (E→D,C,B,A)", help="Zkopíruje hodnoty ze strany E do zbývajících stran D, C, B, A")
+
+        if align_button:
+            # Set aligned values from current Stage E
+            st.session_state.aligned_side_temperature = params['side_e_temperature']
+            st.session_state.aligned_side_pressure = params['side_e_pressure']
+            st.session_state.aligned_side_dwell_time = params['side_e_dwell_time']
+            st.session_state.stages_aligned = True
+            st.rerun()
+
         st.markdown("**🔶 Svařování strany D**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            params['side_d_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 158.0, 1.0, key="side_d_temp")
+            d_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 158.0
+            params['side_d_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, d_temp_default, 1.0, key="side_d_temp")
         with col2:
-            params['side_d_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.3, 0.1, key="side_d_press")
+            d_press_default = st.session_state.aligned_side_pressure if st.session_state.stages_aligned else 4.3
+            params['side_d_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, d_press_default, 0.1, key="side_d_press")
         with col3:
-            params['side_d_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.15, 0.1, key="side_d_time")
+            d_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.15
+            params['side_d_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, d_time_default, 0.1, key="side_d_time")
 
         st.markdown("**🔸 Svařování strany C**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            params['side_c_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 162.0, 1.0, key="side_c_temp")
+            c_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 162.0
+            params['side_c_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, c_temp_default, 1.0, key="side_c_temp")
         with col2:
-            params['side_c_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.4, 0.1, key="side_c_press")
+            c_press_default = st.session_state.aligned_side_pressure if st.session_state.stages_aligned else 4.4
+            params['side_c_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, c_press_default, 0.1, key="side_c_press")
         with col3:
-            params['side_c_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.2, 0.1, key="side_c_time")
+            c_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.2
+            params['side_c_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, c_time_default, 0.1, key="side_c_time")
 
         st.markdown("**🔹 Svařování strany B**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            params['side_b_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 165.0, 1.0, key="side_b_temp")
+            b_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 165.0
+            params['side_b_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, b_temp_default, 1.0, key="side_b_temp")
         with col2:
-            params['side_b_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.5, 0.1, key="side_b_press")
+            b_press_default = st.session_state.aligned_side_pressure if st.session_state.stages_aligned else 4.5
+            params['side_b_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, b_press_default, 0.1, key="side_b_press")
         with col3:
-            params['side_b_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.25, 0.1, key="side_b_time")
+            b_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.25
+            params['side_b_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, b_time_default, 0.1, key="side_b_time")
 
         st.markdown("**🔺 Svařování strany A**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            params['side_a_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 168.0, 1.0, key="side_a_temp")
+            a_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 168.0
+            params['side_a_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, a_temp_default, 1.0, key="side_a_temp")
         with col2:
-            params['side_a_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, 4.6, 0.1, key="side_a_press")
+            a_press_default = st.session_state.aligned_side_pressure if st.session_state.stages_aligned else 4.6
+            params['side_a_pressure'] = st.slider("Tlak (bar)", 1.0, 8.0, a_press_default, 0.1, key="side_a_press")
         with col3:
-            params['side_a_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.3, 0.1, key="side_a_time")
+            a_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.3
+            params['side_a_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, a_time_default, 0.1, key="side_a_time")
 
         st.markdown("---")
         outcome = st.radio("**🎯 Výsledek pokusu**", ["Neúspěch", "Úspěch"], horizontal=True)
