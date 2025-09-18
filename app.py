@@ -813,7 +813,7 @@ def optimize_parameters_section(model, encoder, data):
                 st.markdown("### 📋 Doporučené parametry pro všechny fáze")
 
                 # Zipper phase
-                st.markdown("**🔗 Svařování zipu**")
+                st.markdown("**🔗 Svár zip**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['zipper_temperature']:.0f}°C")
@@ -825,7 +825,7 @@ def optimize_parameters_section(model, encoder, data):
                 st.markdown("---")
 
                 # Bottom phase
-                st.markdown("**⬇️ Svařování spodku**")
+                st.markdown("**⬇️ Svár dno**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['bottom_temperature']:.0f}°C")
@@ -835,7 +835,7 @@ def optimize_parameters_section(model, encoder, data):
                     st.metric("⏱️ Doba", f"{optimal_params['bottom_dwell_time']:.1f}s")
 
                 # Side phases
-                st.markdown("**🔷 Svařování strany E**")
+                st.markdown("**🔷 Věž E**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['side_e_temperature']:.0f}°C")
@@ -844,7 +844,7 @@ def optimize_parameters_section(model, encoder, data):
                 with col3:
                     st.metric("⏱️ Doba", f"{optimal_params['side_e_dwell_time']:.1f}s")
 
-                st.markdown("**🔶 Svařování strany D**")
+                st.markdown("**🔶 Věž D**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['side_d_temperature']:.0f}°C")
@@ -853,7 +853,7 @@ def optimize_parameters_section(model, encoder, data):
                 with col3:
                     st.metric("⏱️ Doba", f"{optimal_params['side_d_dwell_time']:.1f}s")
 
-                st.markdown("**🔸 Svařování strany C**")
+                st.markdown("**🔸 Věž C**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['side_c_temperature']:.0f}°C")
@@ -862,7 +862,7 @@ def optimize_parameters_section(model, encoder, data):
                 with col3:
                     st.metric("⏱️ Doba", f"{optimal_params['side_c_dwell_time']:.1f}s")
 
-                st.markdown("**🔹 Svařování strany B**")
+                st.markdown("**🔹 Věž B**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['side_b_temperature']:.0f}°C")
@@ -871,7 +871,7 @@ def optimize_parameters_section(model, encoder, data):
                 with col3:
                     st.metric("⏱️ Doba", f"{optimal_params['side_b_dwell_time']:.1f}s")
 
-                st.markdown("**🔺 Svařování strany A**")
+                st.markdown("**🔺 Věž A**")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("🌡️ Teplota", f"{optimal_params['side_a_temperature']:.0f}°C")
@@ -1126,7 +1126,7 @@ def render_dedicated_order_screen():
                     st.markdown("**🔧 Parametry všech fází svařování:**")
 
                     # Zipper phase
-                    st.markdown("**🔗 Svařování zipu**")
+                    st.markdown("**🔗 Svár zip**")
                     if attempt['zipper_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1139,7 +1139,7 @@ def render_dedicated_order_screen():
                         st.write("*Nezadáno*")
 
                     # Bottom phase
-                    st.markdown("**⬇️ Svařování spodku**")
+                    st.markdown("**⬇️ Svár dno**")
                     if attempt['bottom_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1152,7 +1152,7 @@ def render_dedicated_order_screen():
                         st.write("*Nezadáno*")
 
                     # Side phases
-                    st.markdown("**🔷 Svařování strany E**")
+                    st.markdown("**🔷 Věž E**")
                     if attempt['side_e_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1164,7 +1164,7 @@ def render_dedicated_order_screen():
                     else:
                         st.write("*Nezadáno*")
 
-                    st.markdown("**🔶 Svařování strany D**")
+                    st.markdown("**🔶 Věž D**")
                     if attempt['side_d_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1176,7 +1176,7 @@ def render_dedicated_order_screen():
                     else:
                         st.write("*Nezadáno*")
 
-                    st.markdown("**🔸 Svařování strany C**")
+                    st.markdown("**🔸 Věž C**")
                     if attempt['side_c_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1188,7 +1188,7 @@ def render_dedicated_order_screen():
                     else:
                         st.write("*Nezadáno*")
 
-                    st.markdown("**🔹 Svařování strany B**")
+                    st.markdown("**🔹 Věž B**")
                     if attempt['side_b_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1200,7 +1200,7 @@ def render_dedicated_order_screen():
                     else:
                         st.write("*Nezadáno*")
 
-                    st.markdown("**🔺 Svařování strany A**")
+                    st.markdown("**🔺 Věž A**")
                     if attempt['side_a_temperature']:
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -1255,16 +1255,16 @@ def render_dedicated_order_screen():
         st.markdown("---")
 
     # Add new attempt form
-    st.subheader("🔬 Nový pokus - Všechny fáze svařování")
+    st.subheader("🔬 Nový pokus")
 
     # Form for all parameters except the align button
     with st.form("attempt_form"):
-        st.markdown("**📋 Parametry svařování pro všechny fáze**")
+        st.markdown("**📋 Parametry svařování**")
 
         params = {}
 
         # Zipper sealing phase
-        st.markdown("**🔗 Svařování zipu**")
+        st.markdown("#### 🔗 Svár zip")
         col1, col2, col3 = st.columns(3)
         with col1:
             params['zipper_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 150.0, 1.0, key="zip_temp")
@@ -1276,7 +1276,7 @@ def render_dedicated_order_screen():
         st.markdown("---")
 
         # Bottom sealing phase
-        st.markdown("**⬇️ Svařování spodku**")
+        st.markdown("#### ⬇️ Svár dno")
         col1, col2, col3 = st.columns(3)
         with col1:
             params['bottom_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 160.0, 1.0, key="bottom_temp")
@@ -1286,9 +1286,10 @@ def render_dedicated_order_screen():
             params['bottom_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.2, 0.1, key="bottom_time")
 
         st.markdown("---")
+        st.markdown("#### Příčné sváry")
 
         # Side sealing phases
-        st.markdown("**🔷 Svařování strany E**")
+        st.markdown("**🔷 Věž E**")
         col1, col2, col3 = st.columns(3)
         with col1:
             params['side_e_temperature'] = st.slider("Teplota (°C)", 100.0, 220.0, 155.0, 1.0, key="side_e_temp")
@@ -1298,7 +1299,7 @@ def render_dedicated_order_screen():
             params['side_e_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, 1.1, 0.1, key="side_e_time")
 
         # Align button right next to Stage E
-        align_button = st.form_submit_button("🔗 Zarovnat zbývající strany (E→D,C,B,A)", help="Zkopíruje hodnoty ze strany E do zbývajících stran D, C, B, A")
+        align_button = st.form_submit_button("🔗 Kopírovat z Věže E (E→D,C,B,A)", help="Zkopíruje hodnoty z věže E do ostatních věží D, C, B, A")
 
         if align_button:
             # Set aligned values from current Stage E
@@ -1308,7 +1309,7 @@ def render_dedicated_order_screen():
             st.session_state.stages_aligned = True
             st.rerun()
 
-        st.markdown("**🔶 Svařování strany D**")
+        st.markdown("**🔶 Věž D**")
         col1, col2, col3 = st.columns(3)
         with col1:
             d_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 158.0
@@ -1320,7 +1321,7 @@ def render_dedicated_order_screen():
             d_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.15
             params['side_d_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, d_time_default, 0.1, key="side_d_time")
 
-        st.markdown("**🔸 Svařování strany C**")
+        st.markdown("**🔸 Věž C**")
         col1, col2, col3 = st.columns(3)
         with col1:
             c_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 162.0
@@ -1332,7 +1333,7 @@ def render_dedicated_order_screen():
             c_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.2
             params['side_c_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, c_time_default, 0.1, key="side_c_time")
 
-        st.markdown("**🔹 Svařování strany B**")
+        st.markdown("**🔹 Věž B**")
         col1, col2, col3 = st.columns(3)
         with col1:
             b_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 165.0
@@ -1344,7 +1345,7 @@ def render_dedicated_order_screen():
             b_time_default = st.session_state.aligned_side_dwell_time if st.session_state.stages_aligned else 1.25
             params['side_b_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, b_time_default, 0.1, key="side_b_time")
 
-        st.markdown("**🔺 Svařování strany A**")
+        st.markdown("**🔺 Věž A**")
         col1, col2, col3 = st.columns(3)
         with col1:
             a_temp_default = st.session_state.aligned_side_temperature if st.session_state.stages_aligned else 168.0
@@ -1359,7 +1360,7 @@ def render_dedicated_order_screen():
         st.markdown("---")
         outcome = st.radio("**🎯 Výsledek pokusu**", ["Neúspěch", "Úspěch"], horizontal=True)
 
-        submitted = st.form_submit_button("➕ Přidat pokus se všemi parametry", type="primary")
+        submitted = st.form_submit_button("Uložit", type="primary")
 
         if submitted:
             # Validate all parameters are within range
@@ -1395,8 +1396,7 @@ def main_page():
         render_dedicated_order_screen()
         return
 
-    st.title("🔥 Systém sběru dat tepelného svařování")
-    st.markdown("**Fáze 1:** Sběr produkčních dat pro trénování modelu")
+    st.title("🔥 Tepelné svařování Doypack")
 
     # Primary call-to-action: Create new order button
     if st.button("➕ Nová zakázka", type="primary"):
