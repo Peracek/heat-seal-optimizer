@@ -27,6 +27,16 @@ if 'order_screen' not in st.session_state:
 if 'show_new_order_form' not in st.session_state:
     st.session_state.show_new_order_form = False
 
+# Initialize session state for stage alignment
+if 'stages_aligned' not in st.session_state:
+    st.session_state.stages_aligned = False
+if 'aligned_side_temperature' not in st.session_state:
+    st.session_state.aligned_side_temperature = 155.0
+if 'aligned_side_pressure' not in st.session_state:
+    st.session_state.aligned_side_pressure = 4.2
+if 'aligned_side_dwell_time' not in st.session_state:
+    st.session_state.aligned_side_dwell_time = 1.1
+
 def init_database():
     """Initialize SQLite database for user data."""
     conn = sqlite3.connect('user_data.db')
@@ -40,6 +50,7 @@ def init_database():
             material_type TEXT,
             print_coverage INTEGER,
             ink_type TEXT,
+            package_size INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -115,6 +126,14 @@ def init_database():
         except sqlite3.OperationalError:
             # Column already exists
             pass
+
+    # Add package_size column to orders table if it doesn't exist
+    try:
+        cursor.execute('ALTER TABLE orders ADD COLUMN package_size INTEGER')
+        conn.commit()
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
 
     # Keep old tables for compatibility
     cursor.execute('''
@@ -231,16 +250,16 @@ def update_recommendation_feedback(recommendation_id, feedback):
     conn.commit()
     conn.close()
 
-def create_order(order_code, material_type, print_coverage, ink_type):
+def create_order(order_code, material_type, print_coverage, ink_type, package_size):
     """Create a new order."""
     init_database()
     conn = sqlite3.connect('user_data.db')
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO orders (order_code, material_type, print_coverage, ink_type)
-            VALUES (?, ?, ?, ?)
-        ''', (order_code, material_type, print_coverage, ink_type))
+            INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (order_code, material_type, print_coverage, ink_type, package_size))
         order_id = cursor.lastrowid
         conn.commit()
         return order_id
@@ -256,7 +275,7 @@ def get_order_by_id(order_id):
     conn = sqlite3.connect('user_data.db')
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT id, order_code, material_type, print_coverage, ink_type, created_at
+        SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
         FROM orders
         WHERE id = ?
     ''', (order_id,))
@@ -269,7 +288,8 @@ def get_order_by_id(order_id):
             'material_type': result[2],
             'print_coverage': result[3],
             'ink_type': result[4],
-            'created_at': result[5]
+            'package_size': result[5],
+            'created_at': result[6]
         }
     return None
 
@@ -279,7 +299,7 @@ def get_all_orders():
     conn = sqlite3.connect('user_data.db')
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT id, order_code, material_type, print_coverage, ink_type, created_at
+        SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
         FROM orders
         ORDER BY created_at DESC
     ''')
@@ -291,7 +311,8 @@ def get_all_orders():
         'material_type': row[2],
         'print_coverage': row[3],
         'ink_type': row[4],
-        'created_at': row[5]
+        'package_size': row[5],
+        'created_at': row[6]
     } for row in results]
 
 
@@ -544,7 +565,7 @@ def load_or_train_model():
 
     # Prepare features and target
     categorical_features = ['Material_Type', 'Ink_Type']
-    numerical_features = ['Print_Coverage', 'Sealing_Temperature_C', 'Sealing_Pressure_bar', 'Dwell_Time_s']
+    numerical_features = ['Print_Coverage', 'Package_Size', 'Sealing_Temperature_C', 'Sealing_Pressure_bar', 'Dwell_Time_s']
 
     # One-hot encode categorical features
     encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
@@ -572,7 +593,7 @@ def load_or_train_model():
 
     return model, encoder
 
-def find_optimal_parameters(model, encoder, material_type, ink_type, print_coverage):
+def find_optimal_parameters(model, encoder, material_type, ink_type, print_coverage, package_size):
     """Find optimal multi-phase sealing parameters using simplified optimization."""
     # For now, return optimized parameters for each phase with reasonable defaults
     # This is a simplified version - in production, you might want to use more
@@ -597,7 +618,10 @@ def find_optimal_parameters(model, encoder, material_type, ink_type, print_cover
     # Adjust for print coverage
     coverage_adjustment = print_coverage * 0.2  # Higher coverage needs slightly more heat
 
-    final_base_temp = base_temp + ink_adjustment + coverage_adjustment
+    # Adjust for package size - larger packages may need more heat and pressure
+    size_adjustment = (package_size - 3) * 2  # Size 3 is neutral, 1-2 need less heat, 4-5 need more
+
+    final_base_temp = base_temp + ink_adjustment + coverage_adjustment + size_adjustment
 
     # Calculate optimal parameters for each phase
     optimal_params = {
@@ -762,6 +786,13 @@ def optimize_parameters_section(model, encoder, data):
             help="Procento povrchu v oblasti svařování pokryté tiskem"
         )
 
+        package_size = st.selectbox(
+            "Velikost doypacku",
+            options=[1, 2, 3, 4, 5],
+            index=2,  # Default to size 3
+            help="Velikost doypacku (1-5)"
+        )
+
         # Main action button
         optimize_button = st.button("🎯 Najít optimální nastavení", type="primary", use_container_width=True)
 
@@ -772,7 +803,7 @@ def optimize_parameters_section(model, encoder, data):
         if optimize_button:
             with st.spinner("Optimalizuji parametry..."):
                 optimal_params = find_optimal_parameters(
-                    model, encoder, material_type, ink_type, print_coverage
+                    model, encoder, material_type, ink_type, print_coverage, package_size
                 )
 
             if optimal_params:
@@ -855,10 +886,11 @@ def optimize_parameters_section(model, encoder, data):
                 - **Materiál:** {material_type}
                 - **Typ barvy:** {ink_type}
                 - **Pokrytí tiskem:** {print_coverage}%
+                - **Velikost doypacku:** {package_size}
                 - **Odhadovaná úspěšnost:** {optimal_params['success_rate']*100:.1f}%
 
                 Tyto parametry jsou optimalizovány pro všech 7 fází svařování doypacku
-                na základě typu materiálu, barvy a pokrytí tiskem.
+                na základě typu materiálu, barvy, pokrytí tiskem a velikosti doypacku.
                 """)
             else:
                 st.error("Nepodařilo se najít optimální parametry. Zkuste prosím jiné vstupy.")
@@ -977,6 +1009,8 @@ def render_order_list():
                 st.write(f"**Materiál:** {order['material_type']}")
                 st.write(f"**Barva:** {order['ink_type']}")
                 st.write(f"**Pokrytí:** {order['print_coverage']}%")
+                package_size_display = order.get('package_size', 'N/A')
+                st.write(f"**Velikost:** {package_size_display}")
 
             with col2:
                 if st.button("📝 Otevřít zakázku", key=f"open_{order['id']}", type="primary"):
@@ -1014,12 +1048,13 @@ def render_new_order_form():
 
         with col2:
             ink_type = st.selectbox("Typ barvy v oblasti svařování", ink_options)
+            package_size = st.selectbox("Velikost doypacku", [1, 2, 3, 4, 5], index=2)
 
         submitted = st.form_submit_button("🚀 Začít", type="primary", use_container_width=True)
 
         if submitted:
             if order_code.strip():
-                order_id = create_order(order_code.strip(), material_type, print_coverage, ink_type)
+                order_id = create_order(order_code.strip(), material_type, print_coverage, ink_type, package_size)
                 if order_id:
                     # Navigate to dedicated order screen
                     st.session_state.current_order_id = order_id
@@ -1059,6 +1094,7 @@ def render_dedicated_order_screen():
         st.rerun()
 
     # Header with order details
+    package_size_display = order.get('package_size', 'N/A')
     st.markdown(f"""
     # 📦 Zakázka: **{order['order_code']}**
 
@@ -1066,6 +1102,7 @@ def render_dedicated_order_screen():
     - **Materiál:** {order['material_type']}
     - **Typ barvy v oblasti svařování:** {order['ink_type']}
     - **Pokrytí tiskem v oblasti svařování:** {order['print_coverage']}%
+    - **Velikost doypacku:** {package_size_display}
     - **Vytvořeno:** {order['created_at'][:16] if order['created_at'] else 'N/A'}
     """)
 
