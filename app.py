@@ -1255,7 +1255,7 @@ def render_dedicated_order_screen():
         st.markdown("---")
 
     # Add new attempt form
-    st.subheader("🔬 Nový pokus")
+    st.subheader(f"🔬 Pokus {len(attempts) + 1}")
 
     # Form for all parameters except the align button
     with st.form("attempt_form"):
