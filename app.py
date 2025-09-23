@@ -350,12 +350,23 @@ def create_order(order_code, material_type, print_coverage, ink_type, package_si
     placeholder = '%s' if is_postgres else '?'
 
     try:
-        cursor.execute(f'''
-            INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
-            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-        ''', (order_code, material_type, print_coverage, ink_type, package_size))
-        order_id = cursor.lastrowid
-        conn.commit()
+        if is_postgres:
+            # PostgreSQL: Use RETURNING clause to get the ID
+            cursor.execute(f'''
+                INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
+                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+                RETURNING id
+            ''', (order_code, material_type, print_coverage, ink_type, package_size))
+            order_id = cursor.fetchone()[0]
+        else:
+            # SQLite: Use lastrowid
+            cursor.execute(f'''
+                INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
+                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+            ''', (order_code, material_type, print_coverage, ink_type, package_size))
+            order_id = cursor.lastrowid
+            conn.commit()
+
         return order_id
     except (sqlite3.IntegrityError, psycopg2.IntegrityError):
         return None  # Order code already exists
@@ -482,13 +493,23 @@ def add_attempt(order_id, outcome, **params):
     columns_str = ', '.join(columns)
     placeholders_str = ', '.join(placeholders)
 
-    cursor.execute(f'''
-        INSERT INTO attempts ({columns_str})
-        VALUES ({placeholders_str})
-    ''', values)
+    if is_postgres:
+        # PostgreSQL: Use RETURNING clause to get the ID
+        cursor.execute(f'''
+            INSERT INTO attempts ({columns_str})
+            VALUES ({placeholders_str})
+            RETURNING id
+        ''', values)
+        attempt_id = cursor.fetchone()[0]
+    else:
+        # SQLite: Use lastrowid
+        cursor.execute(f'''
+            INSERT INTO attempts ({columns_str})
+            VALUES ({placeholders_str})
+        ''', values)
+        attempt_id = cursor.lastrowid
+        conn.commit()
 
-    attempt_id = cursor.lastrowid
-    conn.commit()
     conn.close()
     return attempt_id
 
