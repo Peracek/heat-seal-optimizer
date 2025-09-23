@@ -9,6 +9,8 @@ import sqlite3
 import psycopg2
 from datetime import datetime
 import os
+import threading
+from contextlib import contextmanager
 
 st.set_page_config(page_title="Optimalizátor parametrů tepelného svařování")
 
@@ -36,6 +38,229 @@ def format_date(dt_value):
     except:
         return str(dt_value)
 
+# Database connection pool and caching
+_connection_lock = threading.Lock()
+_connection_pool = None
+_database_initialized = False
+
+def _create_connection():
+    """Create a single database connection - PostgreSQL or SQLite."""
+    # Check if we're running in Streamlit Cloud (has secrets but may be empty)
+    is_streamlit_cloud = hasattr(st, 'secrets') and st.secrets is not None
+
+    # Try to get PostgreSQL connection from Streamlit secrets
+    if is_streamlit_cloud:
+        try:
+            if 'DATABASE_URL' in st.secrets:
+                # Create connection without autocommit for better performance
+                conn = psycopg2.connect(st.secrets['DATABASE_URL'])
+                return conn
+            elif hasattr(st.secrets, 'postgres'):
+                # Alternative secrets format
+                conn = psycopg2.connect(
+                    host=st.secrets.postgres.host,
+                    database=st.secrets.postgres.database,
+                    user=st.secrets.postgres.user,
+                    password=st.secrets.postgres.password,
+                    port=st.secrets.postgres.port
+                )
+                return conn
+            else:
+                # Running on Streamlit Cloud but no PostgreSQL secrets configured
+                st.error("🚨 **Database Configuration Required**")
+                st.error("PostgreSQL connection not configured for Streamlit Cloud deployment.")
+                st.info("Please add DATABASE_URL to your app secrets. See POSTGRESQL_SETUP.md for instructions.")
+                st.stop()
+        except Exception as e:
+            # PostgreSQL connection failed
+            st.error("🚨 **Database Connection Failed**")
+            st.error(f"Could not connect to PostgreSQL: {str(e)}")
+            st.info("Check your database connection settings and ensure your PostgreSQL service is running.")
+            st.stop()
+
+    # Fallback to SQLite for local development only
+    return sqlite3.connect('user_data.db')
+
+@st.cache_resource
+def get_connection_pool():
+    """Get or create the database connection pool."""
+    global _connection_pool
+    with _connection_lock:
+        if _connection_pool is None:
+            _connection_pool = _create_connection()
+        return _connection_pool
+
+@contextmanager
+def get_database_connection():
+    """Get database connection with automatic cleanup."""
+    conn = get_connection_pool()
+    try:
+        yield conn
+        # Only commit if we're not using autocommit
+        if hasattr(conn, 'commit'):
+            conn.commit()
+    except Exception as e:
+        # Only rollback if we're not using autocommit
+        if hasattr(conn, 'rollback'):
+            conn.rollback()
+        raise e
+
+def ensure_database_initialized():
+    """Ensure database is initialized only once."""
+    global _database_initialized
+    if not _database_initialized:
+        with _connection_lock:
+            if not _database_initialized:
+                _init_database_tables()
+                _database_initialized = True
+
+def _init_database_tables():
+    """Initialize database tables - called only once."""
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
+
+        # Detect database type
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+
+        try:
+            # Primary key and auto-increment syntax differs between databases
+            if is_postgres:
+                pk_syntax = "id SERIAL PRIMARY KEY"
+                timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+            else:
+                pk_syntax = "id INTEGER PRIMARY KEY AUTOINCREMENT"
+                timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+
+            # Orders table
+            cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS orders (
+                {pk_syntax},
+                order_code TEXT UNIQUE,
+                material_type TEXT,
+                print_coverage INTEGER,
+                ink_type TEXT,
+                package_size INTEGER,
+                {timestamp_default}
+            )
+            ''')
+
+            # Attempts table with multi-phase sealing parameters
+            cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS attempts (
+                {pk_syntax},
+                order_id INTEGER,
+                -- Legacy single-phase parameters (for backward compatibility)
+                sealing_temperature_c REAL,
+                sealing_pressure_bar REAL,
+                dwell_time_s REAL,
+                -- Zipper sealing phase
+                zipper_temperature_c REAL,
+                zipper_pressure_bar REAL,
+                zipper_dwell_time_s REAL,
+                -- Bottom sealing phase
+                bottom_temperature_c REAL,
+                bottom_pressure_bar REAL,
+                bottom_dwell_time_s REAL,
+                -- Side sealing phases (E, D, C, B, A)
+                side_e_temperature_c REAL,
+                side_e_pressure_bar REAL,
+                side_e_dwell_time_s REAL,
+                side_d_temperature_c REAL,
+                side_d_pressure_bar REAL,
+                side_d_dwell_time_s REAL,
+                side_c_temperature_c REAL,
+                side_c_pressure_bar REAL,
+                side_c_dwell_time_s REAL,
+                side_b_temperature_c REAL,
+                side_b_pressure_bar REAL,
+                side_b_dwell_time_s REAL,
+                side_a_temperature_c REAL,
+                side_a_pressure_bar REAL,
+                side_a_dwell_time_s REAL,
+                outcome TEXT,
+                {timestamp_default},
+                FOREIGN KEY (order_id) REFERENCES orders (id)
+            )
+            ''')
+
+            # Add new multi-phase columns to existing attempts table if they don't exist
+            new_columns = [
+            'zipper_temperature_c REAL',
+            'zipper_pressure_bar REAL',
+            'zipper_dwell_time_s REAL',
+            'bottom_temperature_c REAL',
+            'bottom_pressure_bar REAL',
+            'bottom_dwell_time_s REAL',
+            'side_e_temperature_c REAL',
+            'side_e_pressure_bar REAL',
+            'side_e_dwell_time_s REAL',
+            'side_d_temperature_c REAL',
+            'side_d_pressure_bar REAL',
+            'side_d_dwell_time_s REAL',
+            'side_c_temperature_c REAL',
+            'side_c_pressure_bar REAL',
+            'side_c_dwell_time_s REAL',
+            'side_b_temperature_c REAL',
+            'side_b_pressure_bar REAL',
+            'side_b_dwell_time_s REAL',
+            'side_a_temperature_c REAL',
+            'side_a_pressure_bar REAL',
+            'side_a_dwell_time_s REAL'
+            ]
+
+            for column in new_columns:
+                try:
+                    cursor.execute(f'ALTER TABLE attempts ADD COLUMN {column}')
+                except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
+                    # Column already exists
+                    pass
+                except Exception:
+                    # Other database errors, column might already exist
+                    pass
+
+            # Add package_size column to orders table if it doesn't exist
+            try:
+                cursor.execute('ALTER TABLE orders ADD COLUMN package_size INTEGER')
+            except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
+                # Column already exists
+                pass
+            except Exception:
+                # Other database errors, column might already exist
+                pass
+
+            # Keep old tables for compatibility
+            cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS production_data (
+                    {pk_syntax},
+                    material_type TEXT,
+                    print_coverage INTEGER,
+                    ink_type TEXT,
+                    sealing_temperature_c REAL,
+                    sealing_pressure_bar REAL,
+                    dwell_time_s REAL,
+                    outcome TEXT,
+                    {timestamp_default}
+                )
+            ''')
+            cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS recommendations (
+                    {pk_syntax},
+                    material_type TEXT,
+                    print_coverage INTEGER,
+                    ink_type TEXT,
+                    recommended_temperature_c REAL,
+                    recommended_pressure_bar REAL,
+                    recommended_dwell_time_s REAL,
+                    predicted_success_rate REAL,
+                    user_feedback TEXT,
+                    {timestamp_default}
+                )
+            ''')
+
+        except Exception as e:
+            print(f"Database initialization error: {e}")
+            raise
+
 # Initialize session state for data management
 if 'data_source' not in st.session_state:
     st.session_state.data_source = 'csv'
@@ -62,392 +287,168 @@ if 'aligned_side_pressure' not in st.session_state:
 if 'aligned_side_dwell_time' not in st.session_state:
     st.session_state.aligned_side_dwell_time = 1.1
 
-def get_database_connection():
-    """Get database connection - PostgreSQL for production, SQLite for local development."""
-    # Check if we're running in Streamlit Cloud (has secrets but may be empty)
-    is_streamlit_cloud = hasattr(st, 'secrets') and st.secrets is not None
-
-    # Try to get PostgreSQL connection from Streamlit secrets
-    if is_streamlit_cloud:
-        try:
-            if 'DATABASE_URL' in st.secrets:
-                # Always create a fresh connection with autocommit for better transaction handling
-                conn = psycopg2.connect(st.secrets['DATABASE_URL'])
-                conn.autocommit = True
-                return conn
-            elif hasattr(st.secrets, 'postgres'):
-                # Alternative secrets format
-                conn = psycopg2.connect(
-                    host=st.secrets.postgres.host,
-                    database=st.secrets.postgres.database,
-                    user=st.secrets.postgres.user,
-                    password=st.secrets.postgres.password,
-                    port=st.secrets.postgres.port
-                )
-                conn.autocommit = True
-                return conn
-            else:
-                # Running on Streamlit Cloud but no PostgreSQL secrets configured
-                st.error("🚨 **Database Configuration Required**")
-                st.error("PostgreSQL connection not configured for Streamlit Cloud deployment.")
-                st.info("Please add DATABASE_URL to your app secrets. See POSTGRESQL_SETUP.md for instructions.")
-                st.stop()
-        except Exception as e:
-            # PostgreSQL connection failed
-            st.error("🚨 **Database Connection Failed**")
-            st.error(f"Could not connect to PostgreSQL: {str(e)}")
-            st.info("Check your database connection settings and ensure your PostgreSQL service is running.")
-            st.stop()
-
-    # Fallback to SQLite for local development only
-    return sqlite3.connect('user_data.db')
-
-def init_database():
-    """Initialize database for user data - PostgreSQL or SQLite."""
-    conn = get_database_connection()
-    cursor = conn.cursor()
-
-    # Detect database type
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-
-    try:
-        # Primary key and auto-increment syntax differs between databases
-        if is_postgres:
-            pk_syntax = "id SERIAL PRIMARY KEY"
-            timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-        else:
-            pk_syntax = "id INTEGER PRIMARY KEY AUTOINCREMENT"
-            timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-
-        # Orders table
-        cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS orders (
-            {pk_syntax},
-            order_code TEXT UNIQUE,
-            material_type TEXT,
-            print_coverage INTEGER,
-            ink_type TEXT,
-            package_size INTEGER,
-            {timestamp_default}
-        )
-        ''')
-
-        # Attempts table with multi-phase sealing parameters
-        cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS attempts (
-            {pk_syntax},
-            order_id INTEGER,
-            -- Legacy single-phase parameters (for backward compatibility)
-            sealing_temperature_c REAL,
-            sealing_pressure_bar REAL,
-            dwell_time_s REAL,
-            -- Zipper sealing phase
-            zipper_temperature_c REAL,
-            zipper_pressure_bar REAL,
-            zipper_dwell_time_s REAL,
-            -- Bottom sealing phase
-            bottom_temperature_c REAL,
-            bottom_pressure_bar REAL,
-            bottom_dwell_time_s REAL,
-            -- Side sealing phases (E, D, C, B, A)
-            side_e_temperature_c REAL,
-            side_e_pressure_bar REAL,
-            side_e_dwell_time_s REAL,
-            side_d_temperature_c REAL,
-            side_d_pressure_bar REAL,
-            side_d_dwell_time_s REAL,
-            side_c_temperature_c REAL,
-            side_c_pressure_bar REAL,
-            side_c_dwell_time_s REAL,
-            side_b_temperature_c REAL,
-            side_b_pressure_bar REAL,
-            side_b_dwell_time_s REAL,
-            side_a_temperature_c REAL,
-            side_a_pressure_bar REAL,
-            side_a_dwell_time_s REAL,
-            outcome TEXT,
-            {timestamp_default},
-            FOREIGN KEY (order_id) REFERENCES orders (id)
-        )
-        ''')
-
-        # Add new multi-phase columns to existing attempts table if they don't exist
-        new_columns = [
-        'zipper_temperature_c REAL',
-        'zipper_pressure_bar REAL',
-        'zipper_dwell_time_s REAL',
-        'bottom_temperature_c REAL',
-        'bottom_pressure_bar REAL',
-        'bottom_dwell_time_s REAL',
-        'side_e_temperature_c REAL',
-        'side_e_pressure_bar REAL',
-        'side_e_dwell_time_s REAL',
-        'side_d_temperature_c REAL',
-        'side_d_pressure_bar REAL',
-        'side_d_dwell_time_s REAL',
-        'side_c_temperature_c REAL',
-        'side_c_pressure_bar REAL',
-        'side_c_dwell_time_s REAL',
-        'side_b_temperature_c REAL',
-        'side_b_pressure_bar REAL',
-        'side_b_dwell_time_s REAL',
-        'side_a_temperature_c REAL',
-        'side_a_pressure_bar REAL',
-        'side_a_dwell_time_s REAL'
-        ]
-
-        for column in new_columns:
-            try:
-                cursor.execute(f'ALTER TABLE attempts ADD COLUMN {column}')
-                # Only commit if autocommit is disabled
-                if not is_postgres or not conn.autocommit:
-                    conn.commit()
-            except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
-                # Column already exists
-                pass
-            except Exception:
-                # Other database errors, column might already exist
-                pass
-
-        # Add package_size column to orders table if it doesn't exist
-        try:
-            cursor.execute('ALTER TABLE orders ADD COLUMN package_size INTEGER')
-            # Only commit if autocommit is disabled
-            if not is_postgres or not conn.autocommit:
-                conn.commit()
-        except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
-            # Column already exists
-            pass
-        except Exception:
-            # Other database errors, column might already exist
-            pass
-
-        # Keep old tables for compatibility
-        cursor.execute(f'''
-            CREATE TABLE IF NOT EXISTS production_data (
-                {pk_syntax},
-                material_type TEXT,
-                print_coverage INTEGER,
-                ink_type TEXT,
-                sealing_temperature_c REAL,
-                sealing_pressure_bar REAL,
-                dwell_time_s REAL,
-                outcome TEXT,
-                {timestamp_default}
-            )
-        ''')
-        cursor.execute(f'''
-            CREATE TABLE IF NOT EXISTS recommendations (
-                {pk_syntax},
-                material_type TEXT,
-                print_coverage INTEGER,
-                ink_type TEXT,
-                recommended_temperature_c REAL,
-                recommended_pressure_bar REAL,
-                recommended_dwell_time_s REAL,
-                predicted_success_rate REAL,
-                user_feedback TEXT,
-                {timestamp_default}
-            )
-        ''')
-
-        # Only commit if autocommit is disabled
-        if not is_postgres or not conn.autocommit:
-            conn.commit()
-
-    except Exception as e:
-        # Only rollback if autocommit is disabled
-        if not is_postgres or not conn.autocommit:
-            conn.rollback()
-        print(f"Database initialization error: {e}")
-        raise
-    finally:
-        conn.close()
 
 def load_user_data_from_db():
     """Load user data from database."""
-    init_database()
-    conn = get_database_connection()
     try:
-        df = pd.read_sql_query('''
-            SELECT material_type as Material_Type,
-                   print_coverage as Print_Coverage,
-                   ink_type as Ink_Type,
-                   sealing_temperature_c as Sealing_Temperature_C,
-                   sealing_pressure_bar as Sealing_Pressure_bar,
-                   dwell_time_s as Dwell_Time_s,
-                   outcome as Outcome
-            FROM production_data
-        ''', conn)
-        return df
+        with get_database_connection() as conn:
+            df = pd.read_sql_query('''
+                SELECT material_type as Material_Type,
+                       print_coverage as Print_Coverage,
+                       ink_type as Ink_Type,
+                       sealing_temperature_c as Sealing_Temperature_C,
+                       sealing_pressure_bar as Sealing_Pressure_bar,
+                       dwell_time_s as Dwell_Time_s,
+                       outcome as Outcome
+                FROM production_data
+            ''', conn)
+            return df
     except:
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 def save_user_data_to_db(data):
     """Save user data to database."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
-    # Detect database type for parameter placeholders
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
+        # Detect database type for parameter placeholders
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+        placeholder = '%s' if is_postgres else '?'
 
-    cursor.execute(f'''
-        INSERT INTO production_data
-        (material_type, print_coverage, ink_type, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
-        VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-    ''', (data['Material_Type'], data['Print_Coverage'], data['Ink_Type'],
-          data['Sealing_Temperature_C'], data['Sealing_Pressure_bar'],
-          data['Dwell_Time_s'], data['Outcome']))
-    conn.commit()
-    conn.close()
+        cursor.execute(f'''
+            INSERT INTO production_data
+            (material_type, print_coverage, ink_type, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
+            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+        ''', (data['Material_Type'], data['Print_Coverage'], data['Ink_Type'],
+              data['Sealing_Temperature_C'], data['Sealing_Pressure_bar'],
+              data['Dwell_Time_s'], data['Outcome']))
 
 def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_params):
     """Save parameter recommendation to database."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
-    # Detect database type for parameter placeholders
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
+        # Detect database type for parameter placeholders
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+        placeholder = '%s' if is_postgres else '?'
 
-    cursor.execute(f'''
-        INSERT INTO recommendations
-        (material_type, print_coverage, ink_type, recommended_temperature_c,
-         recommended_pressure_bar, recommended_dwell_time_s, predicted_success_rate)
-        VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-    ''', (str(material_type), int(print_coverage), str(ink_type),
-          float(optimal_params['temperature']), float(optimal_params['pressure']),
-          float(optimal_params['dwell_time']), float(optimal_params['success_rate'])))
-    conn.commit()
-    conn.close()
+        cursor.execute(f'''
+            INSERT INTO recommendations
+            (material_type, print_coverage, ink_type, recommended_temperature_c,
+             recommended_pressure_bar, recommended_dwell_time_s, predicted_success_rate)
+            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+        ''', (str(material_type), int(print_coverage), str(ink_type),
+              float(optimal_params['temperature']), float(optimal_params['pressure']),
+              float(optimal_params['dwell_time']), float(optimal_params['success_rate'])))
 
 def load_recommendations_from_db():
-    """Load recommendations from SQLite database."""
-    init_database()
-    conn = get_database_connection()
+    """Load recommendations from database."""
     try:
-        df = pd.read_sql_query('''
-            SELECT id, material_type, print_coverage, ink_type,
-                   recommended_temperature_c, recommended_pressure_bar,
-                   recommended_dwell_time_s, predicted_success_rate,
-                   user_feedback, created_at
-            FROM recommendations
-            ORDER BY created_at DESC
-        ''', conn)
-        return df
+        with get_database_connection() as conn:
+            df = pd.read_sql_query('''
+                SELECT id, material_type, print_coverage, ink_type,
+                       recommended_temperature_c, recommended_pressure_bar,
+                       recommended_dwell_time_s, predicted_success_rate,
+                       user_feedback, created_at
+                FROM recommendations
+                ORDER BY created_at DESC
+            ''', conn)
+            return df
     except:
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 def update_recommendation_feedback(recommendation_id, feedback):
     """Update recommendation feedback in database."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
-    # Detect database type for parameter placeholders
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
+        # Detect database type for parameter placeholders
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+        placeholder = '%s' if is_postgres else '?'
 
-    cursor.execute(f'''
-        UPDATE recommendations
-        SET user_feedback = {placeholder}
-        WHERE id = {placeholder}
-    ''', (feedback, recommendation_id))
-    conn.commit()
-    conn.close()
+        cursor.execute(f'''
+            UPDATE recommendations
+            SET user_feedback = {placeholder}
+            WHERE id = {placeholder}
+        ''', (feedback, recommendation_id))
 
 def create_order(order_code, material_type, print_coverage, ink_type, package_size):
     """Create a new order."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
-
-    # Detect database type for parameter placeholders and error handling
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
-
     try:
-        if is_postgres:
-            # PostgreSQL: Use RETURNING clause to get the ID
-            cursor.execute(f'''
-                INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
-                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-                RETURNING id
-            ''', (order_code, material_type, print_coverage, ink_type, package_size))
-            order_id = cursor.fetchone()[0]
-        else:
-            # SQLite: Use lastrowid
-            cursor.execute(f'''
-                INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
-                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-            ''', (order_code, material_type, print_coverage, ink_type, package_size))
-            order_id = cursor.lastrowid
-            conn.commit()
+        with get_database_connection() as conn:
+            cursor = conn.cursor()
 
-        return order_id
+            # Detect database type for parameter placeholders and error handling
+            is_postgres = isinstance(conn, psycopg2.extensions.connection)
+            placeholder = '%s' if is_postgres else '?'
+
+            if is_postgres:
+                # PostgreSQL: Use RETURNING clause to get the ID
+                cursor.execute(f'''
+                    INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+                    RETURNING id
+                ''', (order_code, material_type, print_coverage, ink_type, package_size))
+                order_id = cursor.fetchone()[0]
+            else:
+                # SQLite: Use lastrowid
+                cursor.execute(f'''
+                    INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+                ''', (order_code, material_type, print_coverage, ink_type, package_size))
+                order_id = cursor.lastrowid
+
+            return order_id
     except (sqlite3.IntegrityError, psycopg2.IntegrityError):
         return None  # Order code already exists
-    finally:
-        conn.close()
 
 
 def get_order_by_id(order_id):
     """Get order details by ID."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
-    # Detect database type for parameter placeholders
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
+        # Detect database type for parameter placeholders
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+        placeholder = '%s' if is_postgres else '?'
 
-    cursor.execute(f'''
-        SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
-        FROM orders
-        WHERE id = {placeholder}
-    ''', (order_id,))
-    result = cursor.fetchone()
-    conn.close()
-    if result:
-        return {
-            'id': result[0],
-            'order_code': result[1],
-            'material_type': result[2],
-            'print_coverage': result[3],
-            'ink_type': result[4],
-            'package_size': result[5],
-            'created_at': result[6]
-        }
-    return None
+        cursor.execute(f'''
+            SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
+            FROM orders
+            WHERE id = {placeholder}
+        ''', (order_id,))
+        result = cursor.fetchone()
+        if result:
+            return {
+                'id': result[0],
+                'order_code': result[1],
+                'material_type': result[2],
+                'print_coverage': result[3],
+                'ink_type': result[4],
+                'package_size': result[5],
+                'created_at': result[6]
+            }
+        return None
 
 def get_all_orders():
     """Get all orders ordered by creation date (newest first)."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
-        FROM orders
-        ORDER BY created_at DESC
-    ''')
-    results = cursor.fetchall()
-    conn.close()
-    return [{
-        'id': row[0],
-        'order_code': row[1],
-        'material_type': row[2],
-        'print_coverage': row[3],
-        'ink_type': row[4],
-        'package_size': row[5],
-        'created_at': row[6]
-    } for row in results]
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
+            FROM orders
+            ORDER BY created_at DESC
+        ''')
+        results = cursor.fetchall()
+        return [{
+            'id': row[0],
+            'order_code': row[1],
+            'material_type': row[2],
+            'print_coverage': row[3],
+            'ink_type': row[4],
+            'package_size': row[5],
+            'created_at': row[6]
+        } for row in results]
 
 
 def add_attempt(order_id, outcome, **params):
@@ -462,9 +463,8 @@ def add_attempt(order_id, outcome, **params):
             - Bottom phase: bottom_temperature, bottom_pressure, bottom_dwell_time
             - Side phases: side_e_temperature, side_e_pressure, side_e_dwell_time, etc.
     """
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
     # Detect database type for parameter placeholders
     is_postgres = isinstance(conn, psycopg2.extensions.connection)
@@ -532,92 +532,85 @@ def add_attempt(order_id, outcome, **params):
             VALUES ({placeholders_str})
         ''', values)
         attempt_id = cursor.lastrowid
-        conn.commit()
 
-    conn.close()
-    return attempt_id
+        return attempt_id
 
 def get_order_attempts(order_id):
     """Get all attempts for an order with multi-phase parameters."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
-    # Detect database type for parameter placeholders
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
+        # Detect database type for parameter placeholders
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+        placeholder = '%s' if is_postgres else '?'
 
-    cursor.execute(f'''
-        SELECT id, outcome, created_at,
-               -- Legacy parameters
-               sealing_temperature_c, sealing_pressure_bar, dwell_time_s,
-               -- Zipper phase
-               zipper_temperature_c, zipper_pressure_bar, zipper_dwell_time_s,
-               -- Bottom phase
-               bottom_temperature_c, bottom_pressure_bar, bottom_dwell_time_s,
-               -- Side phases
-               side_e_temperature_c, side_e_pressure_bar, side_e_dwell_time_s,
-               side_d_temperature_c, side_d_pressure_bar, side_d_dwell_time_s,
-               side_c_temperature_c, side_c_pressure_bar, side_c_dwell_time_s,
-               side_b_temperature_c, side_b_pressure_bar, side_b_dwell_time_s,
-               side_a_temperature_c, side_a_pressure_bar, side_a_dwell_time_s
-        FROM attempts
-        WHERE order_id = {placeholder}
-        ORDER BY created_at ASC
-    ''', (order_id,))
-    results = cursor.fetchall()
-    conn.close()
+        cursor.execute(f'''
+            SELECT id, outcome, created_at,
+                   -- Legacy parameters
+                   sealing_temperature_c, sealing_pressure_bar, dwell_time_s,
+                   -- Zipper phase
+                   zipper_temperature_c, zipper_pressure_bar, zipper_dwell_time_s,
+                   -- Bottom phase
+                   bottom_temperature_c, bottom_pressure_bar, bottom_dwell_time_s,
+                   -- Side phases
+                   side_e_temperature_c, side_e_pressure_bar, side_e_dwell_time_s,
+                   side_d_temperature_c, side_d_pressure_bar, side_d_dwell_time_s,
+                   side_c_temperature_c, side_c_pressure_bar, side_c_dwell_time_s,
+                   side_b_temperature_c, side_b_pressure_bar, side_b_dwell_time_s,
+                   side_a_temperature_c, side_a_pressure_bar, side_a_dwell_time_s
+            FROM attempts
+            WHERE order_id = {placeholder}
+            ORDER BY created_at ASC
+        ''', (order_id,))
+        results = cursor.fetchall()
 
-    attempts = []
-    for row in results:
-        attempt = {
-            'id': row[0],
-            'outcome': row[1],
-            'created_at': row[2],
-            # Legacy parameters (for backward compatibility)
-            'temperature': row[3],
-            'pressure': row[4],
-            'dwell_time': row[5],
-            # Multi-phase parameters
-            'zipper_temperature': row[6],
-            'zipper_pressure': row[7],
-            'zipper_dwell_time': row[8],
-            'bottom_temperature': row[9],
-            'bottom_pressure': row[10],
-            'bottom_dwell_time': row[11],
-            'side_e_temperature': row[12],
-            'side_e_pressure': row[13],
-            'side_e_dwell_time': row[14],
-            'side_d_temperature': row[15],
-            'side_d_pressure': row[16],
-            'side_d_dwell_time': row[17],
-            'side_c_temperature': row[18],
-            'side_c_pressure': row[19],
-            'side_c_dwell_time': row[20],
-            'side_b_temperature': row[21],
-            'side_b_pressure': row[22],
-            'side_b_dwell_time': row[23],
-            'side_a_temperature': row[24],
-            'side_a_pressure': row[25],
-            'side_a_dwell_time': row[26]
-        }
-        attempts.append(attempt)
+        attempts = []
+        for row in results:
+            attempt = {
+                'id': row[0],
+                'outcome': row[1],
+                'created_at': row[2],
+                # Legacy parameters (for backward compatibility)
+                'temperature': row[3],
+                'pressure': row[4],
+                'dwell_time': row[5],
+                # Multi-phase parameters
+                'zipper_temperature': row[6],
+                'zipper_pressure': row[7],
+                'zipper_dwell_time': row[8],
+                'bottom_temperature': row[9],
+                'bottom_pressure': row[10],
+                'bottom_dwell_time': row[11],
+                'side_e_temperature': row[12],
+                'side_e_pressure': row[13],
+                'side_e_dwell_time': row[14],
+                'side_d_temperature': row[15],
+                'side_d_pressure': row[16],
+                'side_d_dwell_time': row[17],
+                'side_c_temperature': row[18],
+                'side_c_pressure': row[19],
+                'side_c_dwell_time': row[20],
+                'side_b_temperature': row[21],
+                'side_b_pressure': row[22],
+                'side_b_dwell_time': row[23],
+                'side_a_temperature': row[24],
+                'side_a_pressure': row[25],
+                'side_a_dwell_time': row[26]
+            }
+            attempts.append(attempt)
 
-    return attempts
+        return attempts
 
 def delete_attempt(attempt_id):
     """Delete an attempt by ID."""
-    init_database()
-    conn = get_database_connection()
-    cursor = conn.cursor()
+    with get_database_connection() as conn:
+        cursor = conn.cursor()
 
-    # Detect database type for parameter placeholders
-    is_postgres = isinstance(conn, psycopg2.extensions.connection)
-    placeholder = '%s' if is_postgres else '?'
+        # Detect database type for parameter placeholders
+        is_postgres = isinstance(conn, psycopg2.extensions.connection)
+        placeholder = '%s' if is_postgres else '?'
 
-    cursor.execute(f'DELETE FROM attempts WHERE id = {placeholder}', (attempt_id,))
-    conn.commit()
-    conn.close()
+        cursor.execute(f'DELETE FROM attempts WHERE id = {placeholder}', (attempt_id,))
 
 def load_combined_data():
     """Load and combine database data sources: user data, attempts data, and feedback data."""
@@ -660,31 +653,28 @@ def load_combined_data():
 
 def load_feedback_as_training_data():
     """Convert recommendation feedback into training data."""
-    init_database()
-    conn = get_database_connection()
     try:
-        df = pd.read_sql_query('''
-            SELECT material_type as Material_Type,
-                   print_coverage as Print_Coverage,
-                   ink_type as Ink_Type,
-                   recommended_temperature_c as Sealing_Temperature_C,
-                   recommended_pressure_bar as Sealing_Pressure_bar,
-                   recommended_dwell_time_s as Dwell_Time_s,
-                   CASE
-                       WHEN user_feedback = 'good' THEN 'Pass'
-                       WHEN user_feedback = 'bad' THEN 'Fail'
-                       ELSE NULL
-                   END as Outcome
-            FROM recommendations
-            WHERE user_feedback IS NOT NULL
-        ''', conn)
-        # Filter out rows with NULL outcomes
-        df = df.dropna(subset=['Outcome'])
-        return df
+        with get_database_connection() as conn:
+            df = pd.read_sql_query('''
+                SELECT material_type as Material_Type,
+                       print_coverage as Print_Coverage,
+                       ink_type as Ink_Type,
+                       recommended_temperature_c as Sealing_Temperature_C,
+                       recommended_pressure_bar as Sealing_Pressure_bar,
+                       recommended_dwell_time_s as Dwell_Time_s,
+                       CASE
+                           WHEN user_feedback = 'good' THEN 'Pass'
+                           WHEN user_feedback = 'bad' THEN 'Fail'
+                           ELSE NULL
+                       END as Outcome
+                FROM recommendations
+                WHERE user_feedback IS NOT NULL
+            ''', conn)
+            # Filter out rows with NULL outcomes
+            df = df.dropna(subset=['Outcome'])
+            return df
     except:
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 def import_demo_data_to_db():
     """Import demo data from CSV file into the database."""
@@ -692,9 +682,8 @@ def import_demo_data_to_db():
         # Read the demo CSV file
         demo_df = pd.read_csv('demodata.csv')
 
-        init_database()
-        conn = get_database_connection()
-        cursor = conn.cursor()
+        with get_database_connection() as conn:
+            cursor = conn.cursor()
 
         # Import each row into the production_data table
         for _, row in demo_df.iterrows():
@@ -712,9 +701,7 @@ def import_demo_data_to_db():
                 row['Outcome']
             ))
 
-        conn.commit()
-        conn.close()
-        return len(demo_df)
+            return len(demo_df)
     except Exception as e:
         print(f"Error importing demo data: {e}")
         return 0
@@ -1597,33 +1584,30 @@ def main_page():
 
 def load_attempts_data():
     """Load attempts data from database."""
-    init_database()
-    conn = get_database_connection()
     try:
-        df = pd.read_sql_query('''
-            SELECT o.material_type as Material_Type,
-                   o.print_coverage as Print_Coverage,
-                   o.ink_type as Ink_Type,
-                   COALESCE(o.package_size, 3) as Package_Size,
-                   a.sealing_temperature_c as Sealing_Temperature_C,
-                   a.sealing_pressure_bar as Sealing_Pressure_bar,
-                   a.dwell_time_s as Dwell_Time_s,
-                   CASE
-                       WHEN a.outcome = 'Úspěch' THEN 'Pass'
-                       WHEN a.outcome = 'Neúspěch' THEN 'Fail'
-                       ELSE a.outcome
-                   END as Outcome,
-                   o.order_code as Order_Code,
-                   a.created_at as Attempt_Date
-            FROM attempts a
-            JOIN orders o ON a.order_id = o.id
-            ORDER BY a.created_at DESC
-        ''', conn)
-        return df
+        with get_database_connection() as conn:
+            df = pd.read_sql_query('''
+                SELECT o.material_type as Material_Type,
+                       o.print_coverage as Print_Coverage,
+                       o.ink_type as Ink_Type,
+                       COALESCE(o.package_size, 3) as Package_Size,
+                       a.sealing_temperature_c as Sealing_Temperature_C,
+                       a.sealing_pressure_bar as Sealing_Pressure_bar,
+                       a.dwell_time_s as Dwell_Time_s,
+                       CASE
+                           WHEN a.outcome = 'Úspěch' THEN 'Pass'
+                           WHEN a.outcome = 'Neúspěch' THEN 'Fail'
+                           ELSE a.outcome
+                       END as Outcome,
+                       o.order_code as Order_Code,
+                       a.created_at as Attempt_Date
+                FROM attempts a
+                JOIN orders o ON a.order_id = o.id
+                ORDER BY a.created_at DESC
+            ''', conn)
+            return df
     except:
         return pd.DataFrame()
-    finally:
-        conn.close()
 
 def data_management_page():
     """Data management page - view only."""
