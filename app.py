@@ -736,12 +736,22 @@ def find_optimal_parameters(model, encoder, material_type, ink_type, print_cover
 
     # Base temperature ranges by material type
     base_temp = 150
-    if 'Al' in material_type:
-        base_temp = 165
-    elif 'PET' in material_type:
-        base_temp = 160
-    elif 'BOPP' in material_type:
+
+    # Check for different material structures
+    if 'PAP/' in material_type:  # Paper-based materials
+        base_temp = 155
+    elif 'BOPP/BOPP MET/CPP' in material_type:  # Metallic PP monostructure
+        base_temp = 150
+    elif 'BOPP/BOPP ALOX/CPP' in material_type:  # Transparent PP monostructure
         base_temp = 145
+    elif 'BOPP/PET MET/LDPE' in material_type:  # Metallic BOPP/PET/LDPE
+        base_temp = 160
+    elif 'BOPP/PET TRA/LDPE' in material_type:  # Transparent BOPP/PET/LDPE
+        base_temp = 155
+    elif 'PET/PET MET/LDPE' in material_type:  # Metallic PET/PET/LDPE
+        base_temp = 165
+    elif 'PET/PET TRA/LDPE' in material_type:  # Transparent PET/PET/LDPE
+        base_temp = 160
 
     # Adjust for ink type
     ink_adjustment = 0
@@ -802,12 +812,14 @@ def render_data_entry_form():
 
     # Default material and ink options
     material_options = [
-        'Papír + PET + LDPE',
-        'Papír + Al + LDPE',
-        'PET + Al + LDPE',
-        'BOPP + BOPP + CPP',
-        'PET + PETmet + LDPE',
-        'BOPP + PETmet + LDPE'
+        'PAP/PET/LDPE (MAT-02448)',
+        'PAP/PET/LDPE (MAT-02841)',
+        'BOPP/BOPP MET/CPP (MAT-02514)',
+        'BOPP/BOPP ALOX/CPP (MAT-02481)',
+        'BOPP/PET MET/LDPE (MAT-02381)',
+        'BOPP/PET TRA/LDPE (MAT-02675)',
+        'PET/PET MET/LDPE (MAT-02381)',
+        'PET/PET TRA/LDPE (MAT-02675)'
     ]
     ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
@@ -1159,12 +1171,14 @@ def render_new_order_form():
 
     # Default material and ink options
     material_options = [
-        'Papír + PET + LDPE',
-        'Papír + Al + LDPE',
-        'PET + Al + LDPE',
-        'BOPP + BOPP + CPP',
-        'PET + PETmet + LDPE',
-        'BOPP + PETmet + LDPE'
+        'PAP/PET/LDPE (MAT-02448)',
+        'PAP/PET/LDPE (MAT-02841)',
+        'BOPP/BOPP MET/CPP (MAT-02514)',
+        'BOPP/BOPP ALOX/CPP (MAT-02481)',
+        'BOPP/PET MET/LDPE (MAT-02381)',
+        'BOPP/PET TRA/LDPE (MAT-02675)',
+        'PET/PET MET/LDPE (MAT-02381)',
+        'PET/PET TRA/LDPE (MAT-02675)'
     ]
     ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
