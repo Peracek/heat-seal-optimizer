@@ -245,10 +245,15 @@ def save_user_data_to_db(data):
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
+    cursor.execute(f'''
         INSERT INTO production_data
         (material_type, print_coverage, ink_type, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
     ''', (data['Material_Type'], data['Print_Coverage'], data['Ink_Type'],
           data['Sealing_Temperature_C'], data['Sealing_Pressure_bar'],
           data['Dwell_Time_s'], data['Outcome']))
@@ -260,11 +265,16 @@ def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_p
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
+    cursor.execute(f'''
         INSERT INTO recommendations
         (material_type, print_coverage, ink_type, recommended_temperature_c,
          recommended_pressure_bar, recommended_dwell_time_s, predicted_success_rate)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
     ''', (str(material_type), int(print_coverage), str(ink_type),
           float(optimal_params['temperature']), float(optimal_params['pressure']),
           float(optimal_params['dwell_time']), float(optimal_params['success_rate'])))
@@ -295,10 +305,15 @@ def update_recommendation_feedback(recommendation_id, feedback):
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
+    cursor.execute(f'''
         UPDATE recommendations
-        SET user_feedback = ?
-        WHERE id = ?
+        SET user_feedback = {placeholder}
+        WHERE id = {placeholder}
     ''', (feedback, recommendation_id))
     conn.commit()
     conn.close()
@@ -308,15 +323,20 @@ def create_order(order_code, material_type, print_coverage, ink_type, package_si
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
+
+    # Detect database type for parameter placeholders and error handling
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
     try:
-        cursor.execute('''
+        cursor.execute(f'''
             INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
         ''', (order_code, material_type, print_coverage, ink_type, package_size))
         order_id = cursor.lastrowid
         conn.commit()
         return order_id
-    except sqlite3.IntegrityError:
+    except (sqlite3.IntegrityError, psycopg2.IntegrityError):
         return None  # Order code already exists
     finally:
         conn.close()
@@ -327,10 +347,15 @@ def get_order_by_id(order_id):
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
+    cursor.execute(f'''
         SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
         FROM orders
-        WHERE id = ?
+        WHERE id = {placeholder}
     ''', (order_id,))
     result = cursor.fetchone()
     conn.close()
@@ -385,10 +410,14 @@ def add_attempt(order_id, outcome, **params):
     conn = get_database_connection()
     cursor = conn.cursor()
 
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
     # Build the SQL statement dynamically based on provided parameters
     columns = ['order_id', 'outcome']
     values = [order_id, outcome]
-    placeholders = ['?', '?']
+    placeholders = [placeholder, placeholder]
 
     # Map parameter names to database columns
     param_mapping = {
@@ -427,7 +456,7 @@ def add_attempt(order_id, outcome, **params):
         if param_name in param_mapping:
             columns.append(param_mapping[param_name])
             values.append(param_value)
-            placeholders.append('?')
+            placeholders.append(placeholder)
 
     columns_str = ', '.join(columns)
     placeholders_str = ', '.join(placeholders)
@@ -447,7 +476,12 @@ def get_order_attempts(order_id):
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
+    cursor.execute(f'''
         SELECT id, outcome, created_at,
                -- Legacy parameters
                sealing_temperature_c, sealing_pressure_bar, dwell_time_s,
@@ -462,7 +496,7 @@ def get_order_attempts(order_id):
                side_b_temperature_c, side_b_pressure_bar, side_b_dwell_time_s,
                side_a_temperature_c, side_a_pressure_bar, side_a_dwell_time_s
         FROM attempts
-        WHERE order_id = ?
+        WHERE order_id = {placeholder}
         ORDER BY created_at ASC
     ''', (order_id,))
     results = cursor.fetchall()
@@ -510,7 +544,12 @@ def delete_attempt(attempt_id):
     init_database()
     conn = get_database_connection()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM attempts WHERE id = ?', (attempt_id,))
+
+    # Detect database type for parameter placeholders
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    placeholder = '%s' if is_postgres else '?'
+
+    cursor.execute(f'DELETE FROM attempts WHERE id = {placeholder}', (attempt_id,))
     conn.commit()
     conn.close()
 
@@ -523,14 +562,29 @@ def load_combined_data():
     # Combine all data sources
     all_data = []
     if not user_data.empty:
+        # Add Package_Size column if missing from user_data (default to 3)
+        if 'Package_Size' not in user_data.columns:
+            user_data['Package_Size'] = 3
         all_data.append(user_data)
     if not attempts_data.empty:
-        # Select only the columns needed for training (same as other sources)
-        attempts_subset = attempts_data[['Material_Type', 'Print_Coverage', 'Ink_Type',
-                                       'Sealing_Temperature_C', 'Sealing_Pressure_bar',
-                                       'Dwell_Time_s', 'Outcome']]
+        # Select only the columns needed for training (including Package_Size)
+        required_columns = ['Material_Type', 'Print_Coverage', 'Ink_Type',
+                           'Sealing_Temperature_C', 'Sealing_Pressure_bar',
+                           'Dwell_Time_s', 'Outcome']
+
+        # Add Package_Size if available
+        if 'Package_Size' in attempts_data.columns:
+            required_columns.append('Package_Size')
+            attempts_subset = attempts_data[required_columns]
+        else:
+            attempts_subset = attempts_data[required_columns]
+            attempts_subset['Package_Size'] = 3  # Default value
+
         all_data.append(attempts_subset)
     if not feedback_data.empty:
+        # Add Package_Size column if missing from feedback_data (default to 3)
+        if 'Package_Size' not in feedback_data.columns:
+            feedback_data['Package_Size'] = 3
         all_data.append(feedback_data)
 
     if not all_data:
@@ -1484,6 +1538,7 @@ def load_attempts_data():
             SELECT o.material_type as Material_Type,
                    o.print_coverage as Print_Coverage,
                    o.ink_type as Ink_Type,
+                   COALESCE(o.package_size, 3) as Package_Size,
                    a.sealing_temperature_c as Sealing_Temperature_C,
                    a.sealing_pressure_bar as Sealing_Pressure_bar,
                    a.dwell_time_s as Dwell_Time_s,
