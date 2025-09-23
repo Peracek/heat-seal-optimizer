@@ -86,7 +86,7 @@ def get_connection_pool():
     """Get or create the database connection pool."""
     global _connection_pool
     with _connection_lock:
-        if _connection_pool is None:
+        if _connection_pool is None or _connection_pool.closed:
             _connection_pool = _create_connection()
         return _connection_pool
 
@@ -95,13 +95,19 @@ def get_database_connection():
     """Get database connection with automatic cleanup."""
     conn = get_connection_pool()
     try:
+        # Check if connection is valid before yielding
+        if hasattr(conn, 'closed') and conn.closed:
+            # Connection is closed, clear cache and get a new one
+            st.cache_resource.clear()
+            conn = get_connection_pool()
+
         yield conn
-        # Only commit if we're not using autocommit
-        if hasattr(conn, 'commit'):
+        # Only commit if we're not using autocommit and connection is still open
+        if hasattr(conn, 'commit') and not conn.closed:
             conn.commit()
     except Exception as e:
-        # Only rollback if we're not using autocommit
-        if hasattr(conn, 'rollback'):
+        # Only rollback if we're not using autocommit and connection is still open
+        if hasattr(conn, 'rollback') and not conn.closed:
             conn.rollback()
         raise e
 
@@ -262,8 +268,6 @@ def _init_database_tables():
             raise
 
 # Initialize session state for data management
-if 'data_source' not in st.session_state:
-    st.session_state.data_source = 'csv'
 if 'user_data' not in st.session_state:
     st.session_state.user_data = []
 if 'model_needs_retraining' not in st.session_state:
@@ -533,7 +537,7 @@ def add_attempt(order_id, outcome, **params):
         ''', values)
         attempt_id = cursor.lastrowid
 
-        return attempt_id
+    return attempt_id
 
 def get_order_attempts(order_id):
     """Get all attempts for an order with multi-phase parameters."""
@@ -676,35 +680,6 @@ def load_feedback_as_training_data():
     except:
         return pd.DataFrame()
 
-def import_demo_data_to_db():
-    """Import demo data from CSV file into the database."""
-    try:
-        # Read the demo CSV file
-        demo_df = pd.read_csv('demodata.csv')
-
-        with get_database_connection() as conn:
-            cursor = conn.cursor()
-
-        # Import each row into the production_data table
-        for _, row in demo_df.iterrows():
-            cursor.execute('''
-                INSERT INTO production_data
-                (material_type, print_coverage, ink_type, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                row['Material_Type'],
-                row['Print_Coverage'],
-                row['Ink_Type'],
-                row['Sealing_Temperature_C'],
-                row['Sealing_Pressure_bar'],
-                row['Dwell_Time_s'],
-                row['Outcome']
-            ))
-
-            return len(demo_df)
-    except Exception as e:
-        print(f"Error importing demo data: {e}")
-        return 0
 
 @st.cache_resource
 def load_or_train_model():
@@ -856,7 +831,7 @@ def render_data_entry_form():
         if submitted:
             # Validate inputs
             if 100 <= temperature <= 220 and 1.0 <= pressure <= 8.0 and 0.1 <= dwell_time <= 3.0:
-                # Translate outcome back to English for consistency with CSV data
+                # Translate outcome back to English for database consistency
                 outcome_en = 'Pass' if outcome == 'Úspěch' else 'Fail'
                 new_data = {
                     'Material_Type': material_type,
@@ -913,7 +888,7 @@ def render_data_table():
             st.metric("Typů barev", data['Ink_Type'].nunique())
 
     else:
-        st.info("Nejsou k dispozici žádná data. Přidejte několik datových bodů nebo se ujistěte, že existuje CSV soubor.")
+        st.info("Nejsou k dispozici žádná data. Přidejte několik datových bodů do databáze.")
 
 def optimize_parameters_section(model, encoder, data):
     """Render the parameter optimization section."""
