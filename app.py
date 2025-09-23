@@ -40,23 +40,37 @@ if 'aligned_side_dwell_time' not in st.session_state:
 
 def get_database_connection():
     """Get database connection - PostgreSQL for production, SQLite for local development."""
-    try:
-        # Try to get PostgreSQL connection from Streamlit secrets
-        if 'DATABASE_URL' in st.secrets:
-            return psycopg2.connect(st.secrets['DATABASE_URL'])
-        elif hasattr(st.secrets, 'postgres'):
-            # Alternative secrets format
-            return psycopg2.connect(
-                host=st.secrets.postgres.host,
-                database=st.secrets.postgres.database,
-                user=st.secrets.postgres.user,
-                password=st.secrets.postgres.password,
-                port=st.secrets.postgres.port
-            )
-    except Exception:
-        pass
+    # Check if we're running in Streamlit Cloud (has secrets but may be empty)
+    is_streamlit_cloud = hasattr(st, 'secrets') and st.secrets is not None
 
-    # Fallback to SQLite for local development
+    # Try to get PostgreSQL connection from Streamlit secrets
+    if is_streamlit_cloud:
+        try:
+            if 'DATABASE_URL' in st.secrets:
+                return psycopg2.connect(st.secrets['DATABASE_URL'])
+            elif hasattr(st.secrets, 'postgres'):
+                # Alternative secrets format
+                return psycopg2.connect(
+                    host=st.secrets.postgres.host,
+                    database=st.secrets.postgres.database,
+                    user=st.secrets.postgres.user,
+                    password=st.secrets.postgres.password,
+                    port=st.secrets.postgres.port
+                )
+            else:
+                # Running on Streamlit Cloud but no PostgreSQL secrets configured
+                st.error("🚨 **Database Configuration Required**")
+                st.error("PostgreSQL connection not configured for Streamlit Cloud deployment.")
+                st.info("Please add DATABASE_URL to your app secrets. See POSTGRESQL_SETUP.md for instructions.")
+                st.stop()
+        except Exception as e:
+            # PostgreSQL connection failed
+            st.error("🚨 **Database Connection Failed**")
+            st.error(f"Could not connect to PostgreSQL: {str(e)}")
+            st.info("Check your database connection settings and ensure your PostgreSQL service is running.")
+            st.stop()
+
+    # Fallback to SQLite for local development only
     return sqlite3.connect('user_data.db')
 
 def init_database():
