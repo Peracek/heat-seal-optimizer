@@ -12,6 +12,30 @@ import os
 
 st.set_page_config(page_title="Optimalizátor parametrů tepelného svařování")
 
+def format_datetime(dt_value):
+    """Format datetime for display - handles both datetime objects and strings."""
+    if dt_value is None:
+        return 'N/A'
+    if isinstance(dt_value, datetime):
+        return dt_value.strftime('%Y-%m-%d %H:%M')
+    # If it's a string, try to slice it (SQLite format)
+    try:
+        return str(dt_value)[:16]
+    except:
+        return str(dt_value)
+
+def format_date(dt_value):
+    """Format date for display - handles both datetime objects and strings."""
+    if dt_value is None:
+        return 'N/A'
+    if isinstance(dt_value, datetime):
+        return dt_value.strftime('%Y-%m-%d')
+    # If it's a string, try to slice it (SQLite format)
+    try:
+        return str(dt_value)[:10]
+    except:
+        return str(dt_value)
+
 # Initialize session state for data management
 if 'data_source' not in st.session_state:
     st.session_state.data_source = 'csv'
@@ -1090,7 +1114,7 @@ def render_recommendation_history():
                 pressure = float(rec['recommended_pressure_bar']) if pd.notna(rec['recommended_pressure_bar']) else 0
                 dwell = float(rec['recommended_dwell_time_s']) if pd.notna(rec['recommended_dwell_time_s']) else 0
 
-                with st.expander(f"🕐 {str(rec['created_at'])[:16]} | {rec['material_type']} | {rec['ink_type']} | {rec['print_coverage']}%"):
+                with st.expander(f"🕐 {format_datetime(rec['created_at'])} | {rec['material_type']} | {rec['ink_type']} | {rec['print_coverage']}%"):
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
@@ -1151,7 +1175,7 @@ def render_order_list():
         # Get attempt count for this order
         attempts = get_order_attempts(order['id'])
 
-        with st.expander(f"📦  **{order['order_code']}** ({order['created_at'][:16]})"):
+        with st.expander(f"📦  **{order['order_code']}** ({format_datetime(order['created_at'])})"):
             col1, col2 = st.columns([3, 1])
 
             with col1:
@@ -1252,7 +1276,7 @@ def render_dedicated_order_screen():
     - **Typ barvy v oblasti svařování:** {order['ink_type']}
     - **Pokrytí tiskem v oblasti svařování:** {order['print_coverage']}%
     - **Velikost doypacku:** {package_size_display}
-    - **Vytvořeno:** {order['created_at'][:16] if order['created_at'] else 'N/A'}
+    - **Vytvořeno:** {format_datetime(order['created_at'])}
     """)
 
     st.markdown("---")
@@ -1269,7 +1293,7 @@ def render_dedicated_order_screen():
             # Check if this is a multi-phase attempt (has new parameters) or legacy attempt
             has_multiphase = attempt.get('zipper_temperature') is not None
 
-            with st.expander(f"{outcome_emoji} **Pokus {i}** - {attempt['outcome']} ({attempt['created_at'][:16] if attempt['created_at'] else ''})"):
+            with st.expander(f"{outcome_emoji} **Pokus {i}** - {attempt['outcome']} ({format_datetime(attempt['created_at'])})"):
                 if has_multiphase:
                     # Display multi-phase parameters stacked vertically
                     st.markdown("**🔧 Parametry všech fází svařování:**")
@@ -1638,7 +1662,7 @@ def data_management_page():
             with col4:
                 if not attempts_data.empty:
                     latest_attempt = attempts_data['Attempt_Date'].max()
-                    st.metric("Poslední pokus", latest_attempt[:10] if latest_attempt else "N/A")
+                    st.metric("Poslední pokus", format_date(latest_attempt))
         else:
             st.info("Zatím nebyly zaznamenány žádné pokusy ze zakázek.")
 
