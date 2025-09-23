@@ -6,6 +6,7 @@ from sklearn.preprocessing import OneHotEncoder
 import joblib
 from itertools import product
 import sqlite3
+import psycopg2
 from datetime import datetime
 import os
 
@@ -37,28 +38,60 @@ if 'aligned_side_pressure' not in st.session_state:
 if 'aligned_side_dwell_time' not in st.session_state:
     st.session_state.aligned_side_dwell_time = 1.1
 
+def get_database_connection():
+    """Get database connection - PostgreSQL for production, SQLite for local development."""
+    try:
+        # Try to get PostgreSQL connection from Streamlit secrets
+        if 'DATABASE_URL' in st.secrets:
+            return psycopg2.connect(st.secrets['DATABASE_URL'])
+        elif hasattr(st.secrets, 'postgres'):
+            # Alternative secrets format
+            return psycopg2.connect(
+                host=st.secrets.postgres.host,
+                database=st.secrets.postgres.database,
+                user=st.secrets.postgres.user,
+                password=st.secrets.postgres.password,
+                port=st.secrets.postgres.port
+            )
+    except Exception:
+        pass
+
+    # Fallback to SQLite for local development
+    return sqlite3.connect('user_data.db')
+
 def init_database():
-    """Initialize SQLite database for user data."""
-    conn = sqlite3.connect('user_data.db')
+    """Initialize database for user data - PostgreSQL or SQLite."""
+    conn = get_database_connection()
     cursor = conn.cursor()
 
+    # Detect database type
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+
+    # Primary key and auto-increment syntax differs between databases
+    if is_postgres:
+        pk_syntax = "id SERIAL PRIMARY KEY"
+        timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+    else:
+        pk_syntax = "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+
     # Orders table
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            {pk_syntax},
             order_code TEXT UNIQUE,
             material_type TEXT,
             print_coverage INTEGER,
             ink_type TEXT,
             package_size INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            {timestamp_default}
         )
     ''')
 
     # Attempts table with multi-phase sealing parameters
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS attempts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            {pk_syntax},
             order_id INTEGER,
             -- Legacy single-phase parameters (for backward compatibility)
             sealing_temperature_c REAL,
@@ -89,7 +122,7 @@ def init_database():
             side_a_pressure_bar REAL,
             side_a_dwell_time_s REAL,
             outcome TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            {timestamp_default},
             FOREIGN KEY (order_id) REFERENCES orders (id)
         )
     ''')
@@ -123,22 +156,28 @@ def init_database():
         try:
             cursor.execute(f'ALTER TABLE attempts ADD COLUMN {column}')
             conn.commit()
-        except sqlite3.OperationalError:
+        except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
             # Column already exists
+            pass
+        except Exception:
+            # Other database errors, column might already exist
             pass
 
     # Add package_size column to orders table if it doesn't exist
     try:
         cursor.execute('ALTER TABLE orders ADD COLUMN package_size INTEGER')
         conn.commit()
-    except sqlite3.OperationalError:
+    except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
         # Column already exists
+        pass
+    except Exception:
+        # Other database errors, column might already exist
         pass
 
     # Keep old tables for compatibility
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS production_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            {pk_syntax},
             material_type TEXT,
             print_coverage INTEGER,
             ink_type TEXT,
@@ -146,12 +185,12 @@ def init_database():
             sealing_pressure_bar REAL,
             dwell_time_s REAL,
             outcome TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            {timestamp_default}
         )
     ''')
-    cursor.execute('''
+    cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS recommendations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            {pk_syntax},
             material_type TEXT,
             print_coverage INTEGER,
             ink_type TEXT,
@@ -160,16 +199,16 @@ def init_database():
             recommended_dwell_time_s REAL,
             predicted_success_rate REAL,
             user_feedback TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            {timestamp_default}
         )
     ''')
     conn.commit()
     conn.close()
 
 def load_user_data_from_db():
-    """Load user data from SQLite database."""
+    """Load user data from database."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     try:
         df = pd.read_sql_query('''
             SELECT material_type as Material_Type,
@@ -188,9 +227,9 @@ def load_user_data_from_db():
         conn.close()
 
 def save_user_data_to_db(data):
-    """Save user data to SQLite database."""
+    """Save user data to database."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO production_data
@@ -205,7 +244,7 @@ def save_user_data_to_db(data):
 def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_params):
     """Save parameter recommendation to database."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO recommendations
@@ -221,7 +260,7 @@ def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_p
 def load_recommendations_from_db():
     """Load recommendations from SQLite database."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     try:
         df = pd.read_sql_query('''
             SELECT id, material_type, print_coverage, ink_type,
@@ -240,7 +279,7 @@ def load_recommendations_from_db():
 def update_recommendation_feedback(recommendation_id, feedback):
     """Update recommendation feedback in database."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE recommendations
@@ -253,7 +292,7 @@ def update_recommendation_feedback(recommendation_id, feedback):
 def create_order(order_code, material_type, print_coverage, ink_type, package_size):
     """Create a new order."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     try:
         cursor.execute('''
@@ -272,7 +311,7 @@ def create_order(order_code, material_type, print_coverage, ink_type, package_si
 def get_order_by_id(order_id):
     """Get order details by ID."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('''
         SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
@@ -296,7 +335,7 @@ def get_order_by_id(order_id):
 def get_all_orders():
     """Get all orders ordered by creation date (newest first)."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('''
         SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
@@ -329,7 +368,7 @@ def add_attempt(order_id, outcome, **params):
             - Side phases: side_e_temperature, side_e_pressure, side_e_dwell_time, etc.
     """
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
 
     # Build the SQL statement dynamically based on provided parameters
@@ -392,7 +431,7 @@ def add_attempt(order_id, outcome, **params):
 def get_order_attempts(order_id):
     """Get all attempts for an order with multi-phase parameters."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('''
         SELECT id, outcome, created_at,
@@ -455,7 +494,7 @@ def get_order_attempts(order_id):
 def delete_attempt(attempt_id):
     """Delete an attempt by ID."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     cursor = conn.cursor()
     cursor.execute('DELETE FROM attempts WHERE id = ?', (attempt_id,))
     conn.commit()
@@ -488,7 +527,7 @@ def load_combined_data():
 def load_feedback_as_training_data():
     """Convert recommendation feedback into training data."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     try:
         df = pd.read_sql_query('''
             SELECT material_type as Material_Type,
@@ -520,7 +559,7 @@ def import_demo_data_to_db():
         demo_df = pd.read_csv('demodata.csv')
 
         init_database()
-        conn = sqlite3.connect('user_data.db')
+        conn = get_database_connection()
         cursor = conn.cursor()
 
         # Import each row into the production_data table
@@ -1425,7 +1464,7 @@ def main_page():
 def load_attempts_data():
     """Load attempts data from database."""
     init_database()
-    conn = sqlite3.connect('user_data.db')
+    conn = get_database_connection()
     try:
         df = pd.read_sql_query('''
             SELECT o.material_type as Material_Type,
