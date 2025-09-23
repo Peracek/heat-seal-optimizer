@@ -47,16 +47,21 @@ def get_database_connection():
     if is_streamlit_cloud:
         try:
             if 'DATABASE_URL' in st.secrets:
-                return psycopg2.connect(st.secrets['DATABASE_URL'])
+                # Always create a fresh connection with autocommit for better transaction handling
+                conn = psycopg2.connect(st.secrets['DATABASE_URL'])
+                conn.autocommit = True
+                return conn
             elif hasattr(st.secrets, 'postgres'):
                 # Alternative secrets format
-                return psycopg2.connect(
+                conn = psycopg2.connect(
                     host=st.secrets.postgres.host,
                     database=st.secrets.postgres.database,
                     user=st.secrets.postgres.user,
                     password=st.secrets.postgres.password,
                     port=st.secrets.postgres.port
                 )
+                conn.autocommit = True
+                return conn
             else:
                 # Running on Streamlit Cloud but no PostgreSQL secrets configured
                 st.error("🚨 **Database Configuration Required**")
@@ -81,16 +86,17 @@ def init_database():
     # Detect database type
     is_postgres = isinstance(conn, psycopg2.extensions.connection)
 
-    # Primary key and auto-increment syntax differs between databases
-    if is_postgres:
-        pk_syntax = "id SERIAL PRIMARY KEY"
-        timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-    else:
-        pk_syntax = "id INTEGER PRIMARY KEY AUTOINCREMENT"
-        timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+    try:
+        # Primary key and auto-increment syntax differs between databases
+        if is_postgres:
+            pk_syntax = "id SERIAL PRIMARY KEY"
+            timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        else:
+            pk_syntax = "id INTEGER PRIMARY KEY AUTOINCREMENT"
+            timestamp_default = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
 
-    # Orders table
-    cursor.execute(f'''
+        # Orders table
+        cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS orders (
             {pk_syntax},
             order_code TEXT UNIQUE,
@@ -100,10 +106,10 @@ def init_database():
             package_size INTEGER,
             {timestamp_default}
         )
-    ''')
+        ''')
 
-    # Attempts table with multi-phase sealing parameters
-    cursor.execute(f'''
+        # Attempts table with multi-phase sealing parameters
+        cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS attempts (
             {pk_syntax},
             order_id INTEGER,
@@ -139,10 +145,10 @@ def init_database():
             {timestamp_default},
             FOREIGN KEY (order_id) REFERENCES orders (id)
         )
-    ''')
+        ''')
 
-    # Add new multi-phase columns to existing attempts table if they don't exist
-    new_columns = [
+        # Add new multi-phase columns to existing attempts table if they don't exist
+        new_columns = [
         'zipper_temperature_c REAL',
         'zipper_pressure_bar REAL',
         'zipper_dwell_time_s REAL',
@@ -164,12 +170,27 @@ def init_database():
         'side_a_temperature_c REAL',
         'side_a_pressure_bar REAL',
         'side_a_dwell_time_s REAL'
-    ]
+        ]
 
-    for column in new_columns:
+        for column in new_columns:
+            try:
+                cursor.execute(f'ALTER TABLE attempts ADD COLUMN {column}')
+                # Only commit if autocommit is disabled
+                if not is_postgres or not conn.autocommit:
+                    conn.commit()
+            except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
+                # Column already exists
+                pass
+            except Exception:
+                # Other database errors, column might already exist
+                pass
+
+        # Add package_size column to orders table if it doesn't exist
         try:
-            cursor.execute(f'ALTER TABLE attempts ADD COLUMN {column}')
-            conn.commit()
+            cursor.execute('ALTER TABLE orders ADD COLUMN package_size INTEGER')
+            # Only commit if autocommit is disabled
+            if not is_postgres or not conn.autocommit:
+                conn.commit()
         except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
             # Column already exists
             pass
@@ -177,47 +198,47 @@ def init_database():
             # Other database errors, column might already exist
             pass
 
-    # Add package_size column to orders table if it doesn't exist
-    try:
-        cursor.execute('ALTER TABLE orders ADD COLUMN package_size INTEGER')
-        conn.commit()
-    except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
-        # Column already exists
-        pass
-    except Exception:
-        # Other database errors, column might already exist
-        pass
+        # Keep old tables for compatibility
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS production_data (
+                {pk_syntax},
+                material_type TEXT,
+                print_coverage INTEGER,
+                ink_type TEXT,
+                sealing_temperature_c REAL,
+                sealing_pressure_bar REAL,
+                dwell_time_s REAL,
+                outcome TEXT,
+                {timestamp_default}
+            )
+        ''')
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS recommendations (
+                {pk_syntax},
+                material_type TEXT,
+                print_coverage INTEGER,
+                ink_type TEXT,
+                recommended_temperature_c REAL,
+                recommended_pressure_bar REAL,
+                recommended_dwell_time_s REAL,
+                predicted_success_rate REAL,
+                user_feedback TEXT,
+                {timestamp_default}
+            )
+        ''')
 
-    # Keep old tables for compatibility
-    cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS production_data (
-            {pk_syntax},
-            material_type TEXT,
-            print_coverage INTEGER,
-            ink_type TEXT,
-            sealing_temperature_c REAL,
-            sealing_pressure_bar REAL,
-            dwell_time_s REAL,
-            outcome TEXT,
-            {timestamp_default}
-        )
-    ''')
-    cursor.execute(f'''
-        CREATE TABLE IF NOT EXISTS recommendations (
-            {pk_syntax},
-            material_type TEXT,
-            print_coverage INTEGER,
-            ink_type TEXT,
-            recommended_temperature_c REAL,
-            recommended_pressure_bar REAL,
-            recommended_dwell_time_s REAL,
-            predicted_success_rate REAL,
-            user_feedback TEXT,
-            {timestamp_default}
-        )
-    ''')
-    conn.commit()
-    conn.close()
+        # Only commit if autocommit is disabled
+        if not is_postgres or not conn.autocommit:
+            conn.commit()
+
+    except Exception as e:
+        # Only rollback if autocommit is disabled
+        if not is_postgres or not conn.autocommit:
+            conn.rollback()
+        print(f"Database initialization error: {e}")
+        raise
+    finally:
+        conn.close()
 
 def load_user_data_from_db():
     """Load user data from database."""
