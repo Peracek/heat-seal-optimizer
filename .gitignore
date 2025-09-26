@@ -29,6 +29,9 @@ ENV/
 # Environment variables
 .env
 
+# Streamlit secrets
+.streamlit/secrets.toml
+
 # IDE
 .vscode/
 .idea/
