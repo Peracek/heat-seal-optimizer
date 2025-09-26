@@ -144,7 +144,6 @@ def _init_database_tables():
                 order_code TEXT UNIQUE,
                 material_type TEXT,
                 print_coverage INTEGER,
-                ink_type TEXT,
                 package_size INTEGER,
                 {timestamp_default}
             )
@@ -240,7 +239,6 @@ def _init_database_tables():
                     {pk_syntax},
                     material_type TEXT,
                     print_coverage INTEGER,
-                    ink_type TEXT,
                     sealing_temperature_c REAL,
                     sealing_pressure_bar REAL,
                     dwell_time_s REAL,
@@ -253,7 +251,6 @@ def _init_database_tables():
                     {pk_syntax},
                     material_type TEXT,
                     print_coverage INTEGER,
-                    ink_type TEXT,
                     recommended_temperature_c REAL,
                     recommended_pressure_bar REAL,
                     recommended_dwell_time_s REAL,
@@ -299,7 +296,6 @@ def load_user_data_from_db():
             df = pd.read_sql_query('''
                 SELECT material_type as Material_Type,
                        print_coverage as Print_Coverage,
-                       ink_type as Ink_Type,
                        sealing_temperature_c as Sealing_Temperature_C,
                        sealing_pressure_bar as Sealing_Pressure_bar,
                        dwell_time_s as Dwell_Time_s,
@@ -321,13 +317,13 @@ def save_user_data_to_db(data):
 
         cursor.execute(f'''
             INSERT INTO production_data
-            (material_type, print_coverage, ink_type, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
-            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-        ''', (data['Material_Type'], data['Print_Coverage'], data['Ink_Type'],
+            (material_type, print_coverage, sealing_temperature_c, sealing_pressure_bar, dwell_time_s, outcome)
+            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+        ''', (data['Material_Type'], data['Print_Coverage'],
               data['Sealing_Temperature_C'], data['Sealing_Pressure_bar'],
               data['Dwell_Time_s'], data['Outcome']))
 
-def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_params):
+def save_recommendation_to_db(material_type, print_coverage, optimal_params):
     """Save parameter recommendation to database."""
     with get_database_connection() as conn:
         cursor = conn.cursor()
@@ -338,10 +334,10 @@ def save_recommendation_to_db(material_type, print_coverage, ink_type, optimal_p
 
         cursor.execute(f'''
             INSERT INTO recommendations
-            (material_type, print_coverage, ink_type, recommended_temperature_c,
+            (material_type, print_coverage, recommended_temperature_c,
              recommended_pressure_bar, recommended_dwell_time_s, predicted_success_rate)
-            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-        ''', (str(material_type), int(print_coverage), str(ink_type),
+            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+        ''', (str(material_type), int(print_coverage),
               float(optimal_params['temperature']), float(optimal_params['pressure']),
               float(optimal_params['dwell_time']), float(optimal_params['success_rate'])))
 
@@ -350,7 +346,7 @@ def load_recommendations_from_db():
     try:
         with get_database_connection() as conn:
             df = pd.read_sql_query('''
-                SELECT id, material_type, print_coverage, ink_type,
+                SELECT id, material_type, print_coverage,
                        recommended_temperature_c, recommended_pressure_bar,
                        recommended_dwell_time_s, predicted_success_rate,
                        user_feedback, created_at
@@ -376,7 +372,7 @@ def update_recommendation_feedback(recommendation_id, feedback):
             WHERE id = {placeholder}
         ''', (feedback, recommendation_id))
 
-def create_order(order_code, material_type, print_coverage, ink_type, package_size):
+def create_order(order_code, material_type, print_coverage, package_size):
     """Create a new order."""
     try:
         with get_database_connection() as conn:
@@ -389,17 +385,17 @@ def create_order(order_code, material_type, print_coverage, ink_type, package_si
             if is_postgres:
                 # PostgreSQL: Use RETURNING clause to get the ID
                 cursor.execute(f'''
-                    INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
-                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+                    INSERT INTO orders (order_code, material_type, print_coverage, package_size)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})
                     RETURNING id
-                ''', (order_code, material_type, print_coverage, ink_type, package_size))
+                ''', (order_code, material_type, print_coverage, package_size))
                 order_id = cursor.fetchone()[0]
             else:
                 # SQLite: Use lastrowid
                 cursor.execute(f'''
-                    INSERT INTO orders (order_code, material_type, print_coverage, ink_type, package_size)
-                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
-                ''', (order_code, material_type, print_coverage, ink_type, package_size))
+                    INSERT INTO orders (order_code, material_type, print_coverage, package_size)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})
+                ''', (order_code, material_type, print_coverage, package_size))
                 order_id = cursor.lastrowid
 
             return order_id
@@ -417,7 +413,7 @@ def get_order_by_id(order_id):
         placeholder = '%s' if is_postgres else '?'
 
         cursor.execute(f'''
-            SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
+            SELECT id, order_code, material_type, print_coverage, package_size, created_at
             FROM orders
             WHERE id = {placeholder}
         ''', (order_id,))
@@ -428,9 +424,8 @@ def get_order_by_id(order_id):
                 'order_code': result[1],
                 'material_type': result[2],
                 'print_coverage': result[3],
-                'ink_type': result[4],
-                'package_size': result[5],
-                'created_at': result[6]
+                'package_size': result[4],
+                'created_at': result[5]
             }
         return None
 
@@ -439,7 +434,7 @@ def get_all_orders():
     with get_database_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT id, order_code, material_type, print_coverage, ink_type, package_size, created_at
+            SELECT id, order_code, material_type, print_coverage, package_size, created_at
             FROM orders
             ORDER BY created_at DESC
         ''')
@@ -449,9 +444,8 @@ def get_all_orders():
             'order_code': row[1],
             'material_type': row[2],
             'print_coverage': row[3],
-            'ink_type': row[4],
-            'package_size': row[5],
-            'created_at': row[6]
+            'package_size': row[4],
+            'created_at': row[5]
         } for row in results]
 
 
@@ -631,7 +625,7 @@ def load_combined_data():
         all_data.append(user_data)
     if not attempts_data.empty:
         # Select only the columns needed for training (including Package_Size)
-        required_columns = ['Material_Type', 'Print_Coverage', 'Ink_Type',
+        required_columns = ['Material_Type', 'Print_Coverage',
                            'Sealing_Temperature_C', 'Sealing_Pressure_bar',
                            'Dwell_Time_s', 'Outcome']
 
@@ -662,7 +656,6 @@ def load_feedback_as_training_data():
             df = pd.read_sql_query('''
                 SELECT material_type as Material_Type,
                        print_coverage as Print_Coverage,
-                       ink_type as Ink_Type,
                        recommended_temperature_c as Sealing_Temperature_C,
                        recommended_pressure_bar as Sealing_Pressure_bar,
                        recommended_dwell_time_s as Dwell_Time_s,
@@ -699,7 +692,7 @@ def load_or_train_model():
         return None, None
 
     # Prepare features and target
-    categorical_features = ['Material_Type', 'Ink_Type']
+    categorical_features = ['Material_Type']
     numerical_features = ['Print_Coverage', 'Package_Size', 'Sealing_Temperature_C', 'Sealing_Pressure_bar', 'Dwell_Time_s']
 
     # One-hot encode categorical features
@@ -728,7 +721,7 @@ def load_or_train_model():
 
     return model, encoder
 
-def find_optimal_parameters(model, encoder, material_type, ink_type, print_coverage, package_size):
+def find_optimal_parameters(model, encoder, material_type, print_coverage, package_size):
     """Find optimal multi-phase sealing parameters using simplified optimization."""
     # For now, return optimized parameters for each phase with reasonable defaults
     # This is a simplified version - in production, you might want to use more
@@ -753,12 +746,7 @@ def find_optimal_parameters(model, encoder, material_type, ink_type, print_cover
     elif 'PET/PET TRA/LDPE' in material_type:  # Transparent PET/PET/LDPE
         base_temp = 160
 
-    # Adjust for ink type
-    ink_adjustment = 0
-    if ink_type == 'Tmavá':
-        ink_adjustment = 5
-    elif ink_type == 'Metalická':
-        ink_adjustment = 10
+    # Ink adjustment removed - ink type no longer considered
 
     # Adjust for print coverage
     coverage_adjustment = print_coverage * 0.2  # Higher coverage needs slightly more heat
@@ -766,7 +754,7 @@ def find_optimal_parameters(model, encoder, material_type, ink_type, print_cover
     # Adjust for package size - larger packages may need more heat and pressure
     size_adjustment = (package_size - 3) * 2  # Size 3 is neutral, 1-2 need less heat, 4-5 need more
 
-    final_base_temp = base_temp + ink_adjustment + coverage_adjustment + size_adjustment
+    final_base_temp = base_temp + coverage_adjustment + size_adjustment
 
     # Calculate optimal parameters for each phase
     optimal_params = {
@@ -821,7 +809,6 @@ def render_data_entry_form():
         'PET/PET MET/LDPE (MAT-02381)',
         'PET/PET TRA/LDPE (MAT-02675)'
     ]
-    ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
     with st.form("data_entry_form"):
         col1, col2 = st.columns(2)
@@ -829,7 +816,6 @@ def render_data_entry_form():
         with col1:
             material_type = st.selectbox("Typ materiálu", material_options)
             print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
-            ink_type = st.selectbox("Typ barvy v oblasti svařování", ink_options)
 
         with col2:
             temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
@@ -848,7 +834,6 @@ def render_data_entry_form():
                 new_data = {
                     'Material_Type': material_type,
                     'Print_Coverage': print_coverage,
-                    'Ink_Type': ink_type,
                     'Sealing_Temperature_C': temperature,
                     'Sealing_Pressure_bar': pressure,
                     'Dwell_Time_s': dwell_time,
@@ -888,7 +873,7 @@ def render_data_table():
 
         # Statistics
         st.subheader("📈 Statistiky datasetu")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Celkem záznamů", len(data))
         with col2:
@@ -896,8 +881,6 @@ def render_data_table():
             st.metric("Úspěšnost", f"{pass_rate:.1f}%")
         with col3:
             st.metric("Typů materiálů", data['Material_Type'].nunique())
-        with col4:
-            st.metric("Typů barev", data['Ink_Type'].nunique())
 
     else:
         st.info("Nejsou k dispozici žádná data. Přidejte několik datových bodů do databáze.")
@@ -911,7 +894,6 @@ def optimize_parameters_section(model, encoder, data):
         st.subheader("🎯 Vstupní parametry")
 
         material_options = data['Material_Type'].unique().tolist()
-        ink_options = data['Ink_Type'].unique().tolist()
 
         material_type = st.selectbox(
             "Typ materiálu",
@@ -919,11 +901,6 @@ def optimize_parameters_section(model, encoder, data):
             help="Vyberte typ materiálu pro vaši produkční sérii"
         )
 
-        ink_type = st.selectbox(
-            "Typ/barva inkoustu v oblasti svařování",
-            options=ink_options,
-            help="Vyberte dominantní typ nebo barvu inkoustu v oblasti svařování"
-        )
 
         print_coverage = st.slider(
             "Pokrytí tiskem v oblasti svařování (%)",
@@ -950,7 +927,7 @@ def optimize_parameters_section(model, encoder, data):
         if optimize_button:
             with st.spinner("Optimalizuji parametry..."):
                 optimal_params = find_optimal_parameters(
-                    model, encoder, material_type, ink_type, print_coverage, package_size
+                    model, encoder, material_type, print_coverage, package_size
                 )
 
             if optimal_params:
@@ -1031,7 +1008,6 @@ def optimize_parameters_section(model, encoder, data):
                 st.info(f"""
                 **📋 Shrnutí doporučení:**
                 - **Materiál:** {material_type}
-                - **Typ barvy:** {ink_type}
                 - **Pokrytí tiskem:** {print_coverage}%
                 - **Velikost doypacku:** {package_size}
                 - **Odhadovaná úspěšnost:** {optimal_params['success_rate']*100:.1f}%
@@ -1088,7 +1064,7 @@ def render_recommendation_history():
                 pressure = float(rec['recommended_pressure_bar']) if pd.notna(rec['recommended_pressure_bar']) else 0
                 dwell = float(rec['recommended_dwell_time_s']) if pd.notna(rec['recommended_dwell_time_s']) else 0
 
-                with st.expander(f"🕐 {format_datetime(rec['created_at'])} | {rec['material_type']} | {rec['ink_type']} | {rec['print_coverage']}%"):
+                with st.expander(f"🕐 {format_datetime(rec['created_at'])} | {rec['material_type']} | {rec['print_coverage']}%"):
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
@@ -1154,7 +1130,6 @@ def render_order_list():
 
             with col1:
                 st.write(f"**Materiál:** {order['material_type']}")
-                st.write(f"**Barva:** {order['ink_type']}")
                 st.write(f"**Pokrytí:** {order['print_coverage']}%")
                 package_size_display = order.get('package_size', 'N/A')
                 st.write(f"**Velikost:** {package_size_display}")
@@ -1180,7 +1155,6 @@ def render_new_order_form():
         'PET/PET MET/LDPE (MAT-02381)',
         'PET/PET TRA/LDPE (MAT-02675)'
     ]
-    ink_options = ['Světlá', 'Tmavá', 'Metalická']
 
     with st.form("new_order_form"):
         # Order identification section
@@ -1196,14 +1170,13 @@ def render_new_order_form():
             print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
 
         with col2:
-            ink_type = st.selectbox("Typ barvy v oblasti svařování", ink_options)
             package_size = st.selectbox("Velikost doypacku", [1, 2, 3, 4, 5], index=2)
 
         submitted = st.form_submit_button("🚀 Začít", type="primary", use_container_width=True)
 
         if submitted:
             if order_code.strip():
-                order_id = create_order(order_code.strip(), material_type, print_coverage, ink_type, package_size)
+                order_id = create_order(order_code.strip(), material_type, print_coverage, package_size)
                 if order_id:
                     # Navigate to dedicated order screen
                     st.session_state.current_order_id = order_id
@@ -1249,7 +1222,6 @@ def render_dedicated_order_screen():
 
     **📋 Detaily zakázky:**
     - **Materiál:** {order['material_type']}
-    - **Typ barvy v oblasti svařování:** {order['ink_type']}
     - **Pokrytí tiskem v oblasti svařování:** {order['print_coverage']}%
     - **Velikost doypacku:** {package_size_display}
     - **Vytvořeno:** {format_datetime(order['created_at'])}
@@ -1578,7 +1550,6 @@ def load_attempts_data():
             df = pd.read_sql_query('''
                 SELECT o.material_type as Material_Type,
                        o.print_coverage as Print_Coverage,
-                       o.ink_type as Ink_Type,
                        COALESCE(o.package_size, 3) as Package_Size,
                        a.sealing_temperature_c as Sealing_Temperature_C,
                        a.sealing_pressure_bar as Sealing_Pressure_bar,
