@@ -815,7 +815,7 @@ def render_data_entry_form():
 
         with col1:
             material_type = st.selectbox("Typ materiálu", material_options)
-            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
+            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 500, 50)
 
         with col2:
             temperature = st.number_input("Teplota svařování (°C)", 100.0, 220.0, 150.0, 1.0)
@@ -905,7 +905,7 @@ def optimize_parameters_section(model, encoder, data):
         print_coverage = st.slider(
             "Pokrytí tiskem v oblasti svařování (%)",
             min_value=0,
-            max_value=100,
+            max_value=500,
             value=50,
             help="Procento povrchu v oblasti svařování pokryté tiskem"
         )
@@ -1177,7 +1177,7 @@ def render_new_order_form():
         col1, col2 = st.columns(2)
         with col1:
             material_type = st.selectbox("Typ materiálu", material_options)
-            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
+            print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 500, 50)
 
         with col2:
             # Doypack size options with labels
