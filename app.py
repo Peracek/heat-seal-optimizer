@@ -752,7 +752,7 @@ def find_optimal_parameters(model, encoder, material_type, print_coverage, packa
     coverage_adjustment = print_coverage * 0.2  # Higher coverage needs slightly more heat
 
     # Adjust for package size - larger packages may need more heat and pressure
-    size_adjustment = (package_size - 3) * 2  # Size 3 is neutral, 1-2 need less heat, 4-5 need more
+    size_adjustment = (package_size - 3) * 2  # Size 3 is neutral, 1-2 need less heat, 4-6 need more
 
     final_base_temp = base_temp + coverage_adjustment + size_adjustment
 
@@ -910,12 +910,22 @@ def optimize_parameters_section(model, encoder, data):
             help="Procento povrchu v oblasti svařování pokryté tiskem"
         )
 
-        package_size = st.selectbox(
+        # Doypack size options with labels
+        size_options = {
+            "≥ 85 mm": 1,
+            "≥ 90 mm": 2,
+            "≥ 130 mm": 3,
+            "≥ 160 mm": 4,
+            "≥ 180 mm": 5,
+            "≥ 230 mm": 6
+        }
+        package_size_label = st.selectbox(
             "Velikost doypacku",
-            options=[1, 2, 3, 4, 5],
+            options=list(size_options.keys()),
             index=2,  # Default to size 3
-            help="Velikost doypacku (1-5)"
+            help="Velikost doypacku (1-6) s rozměry v mm"
         )
+        package_size = size_options[package_size_label]
 
         # Main action button
         optimize_button = st.button("🎯 Najít optimální nastavení", type="primary", use_container_width=True)
@@ -1170,7 +1180,17 @@ def render_new_order_form():
             print_coverage = st.slider("Pokrytí tiskem v oblasti svařování (%)", 0, 100, 50)
 
         with col2:
-            package_size = st.selectbox("Velikost doypacku", [1, 2, 3, 4, 5], index=2)
+            # Doypack size options with labels
+            size_options = {
+                "≥ 85 mm": 1,
+                "≥ 90 mm": 2,
+                "≥ 130 mm": 3,
+                "≥ 160 mm": 4,
+                "≥ 180 mm": 5,
+                "≥ 230 mm": 6
+            }
+            package_size_label = st.selectbox("Velikost doypacku", list(size_options.keys()), index=2)
+            package_size = size_options[package_size_label]
 
         submitted = st.form_submit_button("🚀 Začít", type="primary", use_container_width=True)
 
