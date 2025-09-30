@@ -94,7 +94,6 @@ def get_connection_pool():
 def get_database_connection():
     """Get database connection with automatic cleanup."""
     # Ensure database is initialized on first access
-    ensure_database_initialized()
 
     conn = get_connection_pool()
     try:
