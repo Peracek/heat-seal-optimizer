@@ -93,6 +93,9 @@ def get_connection_pool():
 @contextmanager
 def get_database_connection():
     """Get database connection with automatic cleanup."""
+    # Ensure database is initialized on first access
+    ensure_database_initialized()
+
     conn = get_connection_pool()
     try:
         # Check if connection is valid before yielding
@@ -1669,8 +1672,7 @@ def optimization_page():
 
 def main():
     """Main application with page navigation."""
-    # Ensure database is initialized with all required columns
-    ensure_database_initialized()
+    # Database initialization moved to lazy loading - will be initialized when first needed
 
     # Page navigation in sidebar
     st.sidebar.title("🧭 Navigace")
