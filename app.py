@@ -242,6 +242,13 @@ def _init_database_tables():
             except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
                 # Column already exists
                 pass
+
+            # Add note column to attempts table if it doesn't exist
+            try:
+                cursor.execute('ALTER TABLE attempts ADD COLUMN note TEXT')
+            except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
+                # Column already exists
+                pass
             except Exception:
                 # Other database errors, column might already exist
                 pass
@@ -517,7 +524,9 @@ def add_attempt(order_id, outcome, **params):
         'side_b_dwell_time': 'side_b_dwell_time_s',
         'side_a_temperature': 'side_a_temperature_c',
         'side_a_pressure': 'side_a_pressure_bar',
-        'side_a_dwell_time': 'side_a_dwell_time_s'
+        'side_a_dwell_time': 'side_a_dwell_time_s',
+        # Note
+        'note': 'note'
     }
 
     # Add provided parameters to the query
@@ -570,7 +579,9 @@ def get_order_attempts(order_id):
                    side_d_temperature_c, side_d_pressure_bar, side_d_dwell_time_s,
                    side_c_temperature_c, side_c_pressure_bar, side_c_dwell_time_s,
                    side_b_temperature_c, side_b_pressure_bar, side_b_dwell_time_s,
-                   side_a_temperature_c, side_a_pressure_bar, side_a_dwell_time_s
+                   side_a_temperature_c, side_a_pressure_bar, side_a_dwell_time_s,
+                   -- Note
+                   note
             FROM attempts
             WHERE order_id = {placeholder}
             ORDER BY created_at ASC
@@ -608,7 +619,9 @@ def get_order_attempts(order_id):
                 'side_b_dwell_time': row[23],
                 'side_a_temperature': row[24],
                 'side_a_pressure': row[25],
-                'side_a_dwell_time': row[26]
+                'side_a_dwell_time': row[26],
+                # Note
+                'note': row[27]
             }
             attempts.append(attempt)
 
@@ -1391,6 +1404,11 @@ def render_dedicated_order_screen():
                     else:
                         st.write("*Žádné parametry*")
 
+                # Display note if it exists
+                if attempt.get('note') and attempt['note'].strip():
+                    st.markdown("**📝 Poznámka:**")
+                    st.write(attempt['note'])
+
                 # Delete button
                 col1, col2 = st.columns([0.8, 0.2])
                 with col2:
@@ -1522,6 +1540,13 @@ def render_dedicated_order_screen():
             params['side_a_dwell_time'] = st.slider("Doba (s)", 0.1, 3.0, a_time_default, 0.1, key="side_a_time")
 
         st.markdown("---")
+
+        # Note field
+        st.markdown("**📝 Poznámka**")
+        params['note'] = st.text_area("Poznámka k pokusu (nepovinné)",
+                                     placeholder="Zadejte jakékoliv poznámky k tomuto pokusu...",
+                                     help="Zde můžete zapsat jakékoliv pozorování, problémy nebo další informace k tomuto pokusu")
+
         outcome = st.radio("**🎯 Výsledek pokusu**", ["Neúspěch", "Úspěch"], horizontal=True)
 
         submitted = st.form_submit_button("Uložit", type="primary")
