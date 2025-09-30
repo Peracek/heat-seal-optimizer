@@ -38,6 +38,22 @@ def format_date(dt_value):
     except:
         return str(dt_value)
 
+def get_package_size_label(size_value):
+    """Convert package size number to display label."""
+    if size_value is None:
+        return 'N/A'
+
+    size_labels = {
+        1: "≥ 85 mm",
+        2: "≥ 90 mm",
+        3: "≥ 130 mm",
+        4: "≥ 160 mm",
+        5: "≥ 180 mm",
+        6: "≥ 230 mm"
+    }
+
+    return size_labels.get(size_value, str(size_value))
+
 # Database connection pool and caching
 _connection_lock = threading.Lock()
 _connection_pool = None
@@ -1180,7 +1196,7 @@ def render_order_list():
             with col1:
                 st.write(f"**Materiál:** {order['material_type']}")
                 st.write(f"**Pokrytí:** {order['print_coverage']}%")
-                package_size_display = order.get('package_size', 'N/A')
+                package_size_display = get_package_size_label(order.get('package_size'))
                 st.write(f"**Velikost:** {package_size_display}")
                 sackovacka_display = order.get('sackovacka', 'N/A')
                 st.write(f"**Sáčkovačka:** {sackovacka_display}")
@@ -1287,7 +1303,7 @@ def render_dedicated_order_screen():
         st.rerun()
 
     # Header with order details
-    package_size_display = order.get('package_size', 'N/A')
+    package_size_display = get_package_size_label(order.get('package_size'))
     sackovacka_display = order.get('sackovacka', 'N/A')
     st.markdown(f"""
     # 📦 Zakázka: **{order['order_code']}**
