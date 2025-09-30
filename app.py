@@ -233,6 +233,16 @@ def _init_database_tables():
                 # Other database errors, column might already exist
                 pass
 
+            # Add sackovacka column to orders table if it doesn't exist
+            try:
+                cursor.execute('ALTER TABLE orders ADD COLUMN sackovacka TEXT')
+            except (sqlite3.OperationalError, psycopg2.errors.DuplicateColumn):
+                # Column already exists
+                pass
+            except Exception:
+                # Other database errors, column might already exist
+                pass
+
             # Keep old tables for compatibility
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS production_data (
@@ -372,7 +382,7 @@ def update_recommendation_feedback(recommendation_id, feedback):
             WHERE id = {placeholder}
         ''', (feedback, recommendation_id))
 
-def create_order(order_code, material_type, print_coverage, package_size):
+def create_order(order_code, material_type, print_coverage, package_size, sackovacka=None):
     """Create a new order."""
     try:
         with get_database_connection() as conn:
@@ -385,17 +395,17 @@ def create_order(order_code, material_type, print_coverage, package_size):
             if is_postgres:
                 # PostgreSQL: Use RETURNING clause to get the ID
                 cursor.execute(f'''
-                    INSERT INTO orders (order_code, material_type, print_coverage, package_size)
-                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})
+                    INSERT INTO orders (order_code, material_type, print_coverage, package_size, sackovacka)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
                     RETURNING id
-                ''', (order_code, material_type, print_coverage, package_size))
+                ''', (order_code, material_type, print_coverage, package_size, sackovacka))
                 order_id = cursor.fetchone()[0]
             else:
                 # SQLite: Use lastrowid
                 cursor.execute(f'''
-                    INSERT INTO orders (order_code, material_type, print_coverage, package_size)
-                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder})
-                ''', (order_code, material_type, print_coverage, package_size))
+                    INSERT INTO orders (order_code, material_type, print_coverage, package_size, sackovacka)
+                    VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})
+                ''', (order_code, material_type, print_coverage, package_size, sackovacka))
                 order_id = cursor.lastrowid
 
             return order_id
@@ -413,7 +423,7 @@ def get_order_by_id(order_id):
         placeholder = '%s' if is_postgres else '?'
 
         cursor.execute(f'''
-            SELECT id, order_code, material_type, print_coverage, package_size, created_at
+            SELECT id, order_code, material_type, print_coverage, package_size, sackovacka, created_at
             FROM orders
             WHERE id = {placeholder}
         ''', (order_id,))
@@ -425,7 +435,8 @@ def get_order_by_id(order_id):
                 'material_type': result[2],
                 'print_coverage': result[3],
                 'package_size': result[4],
-                'created_at': result[5]
+                'sackovacka': result[5],
+                'created_at': result[6]
             }
         return None
 
@@ -434,7 +445,7 @@ def get_all_orders():
     with get_database_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT id, order_code, material_type, print_coverage, package_size, created_at
+            SELECT id, order_code, material_type, print_coverage, package_size, sackovacka, created_at
             FROM orders
             ORDER BY created_at DESC
         ''')
@@ -445,7 +456,8 @@ def get_all_orders():
             'material_type': row[2],
             'print_coverage': row[3],
             'package_size': row[4],
-            'created_at': row[5]
+            'sackovacka': row[5],
+            'created_at': row[6]
         } for row in results]
 
 
@@ -1143,6 +1155,8 @@ def render_order_list():
                 st.write(f"**Pokrytí:** {order['print_coverage']}%")
                 package_size_display = order.get('package_size', 'N/A')
                 st.write(f"**Velikost:** {package_size_display}")
+                sackovacka_display = order.get('sackovacka', 'N/A')
+                st.write(f"**Sáčkovačka:** {sackovacka_display}")
 
             with col2:
                 if st.button("📝 Otevřít zakázku", key=f"open_{order['id']}", type="primary"):
@@ -1192,11 +1206,15 @@ def render_new_order_form():
             package_size_label = st.selectbox("Velikost doypacku", list(size_options.keys()), index=2)
             package_size = size_options[package_size_label]
 
+            # Sáčkovačka options
+            sackovacka_options = ["S1", "S2", "S3", "S4"]
+            sackovacka = st.selectbox("Sáčkovačka", sackovacka_options, index=0)
+
         submitted = st.form_submit_button("🚀 Začít", type="primary", use_container_width=True)
 
         if submitted:
             if order_code.strip():
-                order_id = create_order(order_code.strip(), material_type, print_coverage, package_size)
+                order_id = create_order(order_code.strip(), material_type, print_coverage, package_size, sackovacka)
                 if order_id:
                     # Navigate to dedicated order screen
                     st.session_state.current_order_id = order_id
@@ -1237,6 +1255,7 @@ def render_dedicated_order_screen():
 
     # Header with order details
     package_size_display = order.get('package_size', 'N/A')
+    sackovacka_display = order.get('sackovacka', 'N/A')
     st.markdown(f"""
     # 📦 Zakázka: **{order['order_code']}**
 
@@ -1244,6 +1263,7 @@ def render_dedicated_order_screen():
     - **Materiál:** {order['material_type']}
     - **Pokrytí tiskem v oblasti svařování:** {order['print_coverage']}%
     - **Velikost doypacku:** {package_size_display}
+    - **Sáčkovačka:** {sackovacka_display}
     - **Vytvořeno:** {format_datetime(order['created_at'])}
     """)
 
@@ -1649,6 +1669,9 @@ def optimization_page():
 
 def main():
     """Main application with page navigation."""
+    # Ensure database is initialized with all required columns
+    ensure_database_initialized()
+
     # Page navigation in sidebar
     st.sidebar.title("🧭 Navigace")
     page = st.sidebar.radio(
